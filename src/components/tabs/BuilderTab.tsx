@@ -1,19 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+import * as React from 'react';
 import {
-  Send,
   Bot,
   User,
-  StopCircle,
-  Lightbulb,
-  Copy,
-  Check,
   Key,
-  FileCode2,
-  RefreshCw,
+  FileCode,
+  Image as ImageIcon,
+  FileText,
+  File,
 } from 'lucide-react';
 import { AgentActionState, ChatMessage, Project, UserSettings } from '../../types';
-import { api } from '../../lib/api';
 import { PROVIDERS, ProviderId } from '../../../providers/types';
+import { AttachmentComposerTray, AttachedFile } from '../ui/attachment-composer-tray';
+import { ThinkingState, Markdown, TraceNode } from '../ui/ai-thinking-and-tool-calls';
+import { runLiveAgentTurn } from '../../lib/agentEvents';
 
 interface BuilderTabProps {
   activeProject: Project | null;
@@ -31,38 +30,37 @@ export const BuilderTab: React.FC<BuilderTabProps> = ({
   activeProject,
   settings,
   actionState,
-  onStopPrompt,
   hasKey,
   onSaveKey,
   onAddLog,
   onRecordSpend,
 }) => {
-  const [promptInput, setPromptInput] = useState('');
-  const [inlineKeyInput, setInlineKeyInput] = useState('');
-  const [showInlineKeyForm, setShowInlineKeyForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+  const [promptInput, setPromptInput] = React.useState('');
+  const [inlineKeyInput, setInlineKeyInput] = React.useState('');
+  const [showInlineKeyForm, setShowInlineKeyForm] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Chat message thread
-  const [messages, setMessages] = useState<ChatMessage[]>([
+  const [messages, setMessages] = React.useState<ChatMessage[]>([
     {
       id: 'msg-welcome',
       role: 'assistant',
-      content: `👋 **Welcome to LihForge!**
+      content: `Welcome to **LihForge AI Builder**!
 
-I am your AI Roblox Game Engineering Partner. Tell me what game system, mechanics, or feature you want to create:
-- *“Create a Pet Hatching system with 3 egg rarities, luck multipliers, and opening animations.”*
-- *“Build a secure DataStore manager for player stats with retry budgets and BindToClose.”*
-- *“Generate an Obby checkpoint runner with kill-bricks, moving obstacles, and sound FX.”*
+Tell me what game system, mechanics, or Luau script you want to engineer:
+- *"Pet Hatching system with 3 egg rarities, luck multipliers, and opening animations"*
+- *"Secure DataStore manager with session locks and BindToClose budgets"*
+- *"Combat Raycast hitbox handler with hit-stop VFX and sound layers"*
 
-I will design the architecture, generate complete Luau scripts, verify against the **LihFolk 1,300-note vault rules**, and prepare it for Roblox Studio.`,
+I will plan the architecture, query the **LihFolk 1,300-note vault rules**, generate complete Luau scripts, and verify them against 2026 engine standards.`,
       timestamp: new Date().toISOString(),
     },
   ]);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSubmitting]);
 
@@ -82,9 +80,18 @@ I will design the architecture, generate complete Luau scripts, verify against t
     }
   };
 
-  const handleSendPrompt = async (textToSend: string) => {
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setIsSubmitting(false);
+    onAddLog('Agent execution cancelled by user.', 'warn', 'STOP');
+  };
+
+  const handleSendPrompt = async (textToSend: string, attachments: AttachedFile[] = []) => {
     const userPrompt = textToSend.trim();
-    if (!userPrompt || isSubmitting) return;
+    if ((!userPrompt && attachments.length === 0) || isSubmitting) return;
 
     // Check budget limit
     if (actionState.spentBudget >= settings.monthlyBudgetLimit) {
@@ -97,141 +104,131 @@ I will design the architecture, generate complete Luau scripts, verify against t
     }
 
     const userMessage: ChatMessage = {
-      id: `msg-${Date.now()}`,
+      id: `msg-${Date.now()}-user`,
       role: 'user',
       content: userPrompt,
+      attachments,
       timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const assistantMessageId = `msg-${Date.now()}-ai`;
+    const pendingAssistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '',
+      traceNodes: [],
+      isThinkingRunning: true,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage, pendingAssistantMessage]);
     setPromptInput('');
     setIsSubmitting(true);
 
-    onAddLog(`Executing prompt with ${settings.activeModel}...`, 'cmd', 'AI');
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
-    // System instruction enforcing strict Roblox 2026 standards and LihFolk vault principles
-    const systemPrompt = `You are LihForge, a senior Roblox full-stack game architect and Luau engineer.
-Active Project: "${activeProject?.name || 'Default Roblox Experience'}" (Genre: ${activeProject?.genre || 'Simulator'}).
-Gameplay brief: "${activeProject?.notes || 'Standard Roblox experience'}".
+    onAddLog(`Starting agent run with ${settings.activeModel}...`, 'cmd', 'AI');
 
-When the user asks you to build or code a game system, feature, or script:
-1. Give a crisp 3-4 sentence architecture explanation of how the system works.
-2. Outline the 4-step pipeline: (1) Architecture Plan, (2) Luau Implementation, (3) Anti-Exploit & Error Audit, (4) Studio Placement.
-3. Provide PRODUCTION-READY, FULLY FUNCTIONAL Luau code.
-   - Use strict typing (--!strict).
-   - Never use deprecated wait() (always task.wait()).
-   - RemoteEvents must be strictly validated on the server with type and range checks.
-   - For player data, follow session-locking and BindToClose patterns.
-   - Format Luau code in standard \`\`\`luau code blocks and specify the exact Studio location (e.g. -- Path: ServerScriptService/PetService.luau).
-4. Be proactive: recommend the next logical feature or sound/VFX polish.`;
-
-    try {
-      // Build conversation context for API
-      const conversationContext = messages
-        .filter((m) => m.id !== 'msg-welcome')
-        .concat(userMessage)
-        .map((m) => ({
-          role: m.role,
-          content: m.content,
-        }));
-
-      const response = await api.runAiChat(
-        settings.activeProvider,
-        settings.activeModel,
-        systemPrompt,
-        conversationContext,
-        inlineKeyInput.trim() ? inlineKeyInput.trim() : undefined
-      );
-
-      // Parse code block if present
-      const codeMatch = response.content.match(/```(?:luau|lua)?\n([\s\S]*?)```/);
-      const code = codeMatch ? codeMatch[1].trim() : undefined;
-
-      const assistantMessage: ChatMessage = {
-        id: `msg-${Date.now()}-ai`,
-        role: 'assistant',
-        content: response.content,
-        timestamp: new Date().toISOString(),
-        codeSnippet: code
-          ? {
-              filename: 'Script.luau',
-              targetLocation: 'ServerScriptService',
-              code,
-            }
-          : undefined,
-        metrics: {
-          tokensInput: response.tokensInput,
-          tokensOutput: response.tokensOutput,
-          cost: response.estimatedCost,
-          durationMs: response.durationMs,
-          model: response.model,
+    await runLiveAgentTurn(
+      userPrompt,
+      attachments,
+      activeProject,
+      settings,
+      {
+        onNodesUpdate: (updatedNodes: TraceNode[]) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? { ...m, traceNodes: updatedNodes }
+                : m
+            )
+          );
         },
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      onRecordSpend(response.estimatedCost);
-
-      onAddLog(
-        `AI generated response in ${response.durationMs}ms (${response.tokensInput + response.tokensOutput} tokens, $${response.estimatedCost.toFixed(5)}).`,
-        'success',
-        'AI'
-      );
-    } catch (err: any) {
-      const errorMessage: ChatMessage = {
-        id: `msg-${Date.now()}-err`,
-        role: 'assistant',
-        content: `⚠️ **AI Execution Error:**\n\n${err.message}\n\n*Tip: Check that your API key is valid and has quota, or enter your key in the bar above.*`,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-      onAddLog(`AI Error: ${err.message}`, 'error', 'AI');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const copyCodeToClipboard = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCodeId(id);
-    setTimeout(() => setCopiedCodeId(null), 2500);
+        onContentStream: () => {},
+        onActionStateUpdate: (action) => {
+          onAddLog(action, 'info', 'AGENT');
+        },
+        onComplete: (finalContent, metrics) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    content: finalContent,
+                    isThinkingRunning: false,
+                    metrics,
+                  }
+                : m
+            )
+          );
+          setIsSubmitting(false);
+          abortControllerRef.current = null;
+          onRecordSpend(metrics.cost);
+          onAddLog(
+            `Agent completed turn in ${metrics.durationMs}ms ($${metrics.cost.toFixed(5)}).`,
+            'success',
+            'AI'
+          );
+        },
+        onError: (err) => {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    content: `⚠️ **Agent Execution Error**\n\n${err.message}\n\n*Check your API key in Settings or click "Connect Key" above.*`,
+                    isThinkingRunning: false,
+                  }
+                : m
+            )
+          );
+          setIsSubmitting(false);
+          abortControllerRef.current = null;
+          onAddLog(`Agent error: ${err.message}`, 'error', 'AI');
+        },
+      },
+      abortController.signal
+    );
   };
 
   const selectedProviderDef = PROVIDERS[settings.activeProvider] || PROVIDERS.openrouter;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden select-none bg-[#090a10]">
-      {/* Context Bar */}
-      <div className="h-10 px-4 border-b border-white/10 bg-black/40 flex items-center justify-between text-xs">
-        <div className="flex items-center space-x-3 truncate">
-          <span className="font-semibold text-zinc-300 flex items-center space-x-1.5 flex-shrink-0">
-            <Bot className="w-4 h-4 text-indigo-400" />
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-background select-none">
+      {/* Context Top Header */}
+      <div className="h-10 px-4 border-b border-border bg-card/60 flex items-center justify-between text-xs">
+        <div className="flex items-center gap-3 truncate">
+          <span className="font-semibold text-foreground flex items-center gap-1.5 shrink-0">
+            <Bot className="h-4 w-4 text-primary" />
             <span>AI Game Builder</span>
           </span>
-          <span className="text-zinc-600">|</span>
-          <span className="text-zinc-400 font-mono text-[11px] truncate">
+          <span className="text-border">|</span>
+          <span className="text-muted-foreground font-mono text-[11px] truncate">
             Target: {activeProject ? activeProject.name : 'No project loaded'}
           </span>
           {activeProject?.genre && (
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/15 text-indigo-300 border border-indigo-500/20 flex-shrink-0">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border shrink-0">
               {activeProject.genre}
             </span>
           )}
         </div>
 
-        <div className="flex items-center space-x-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={() => setShowInlineKeyForm(!showInlineKeyForm)}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-[11px] font-mono border transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
               hasKey
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
-                : 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25 animate-pulse'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
             }`}
           >
-            <Key className="w-3 h-3" />
-            <span>{hasKey ? 'Key Connected' : 'Paste API Key'}</span>
+            <Key className="h-3 w-3" />
+            <span>{hasKey ? 'Key Connected' : 'Connect Key'}</span>
           </button>
 
-          <span className="text-[11px] font-mono font-medium text-indigo-300 px-2 py-0.5 rounded bg-indigo-950/40 border border-indigo-500/30">
+          <span className="text-[11px] font-mono font-medium text-foreground px-2 py-0.5 rounded bg-muted border border-border">
             {settings.activeModel}
           </span>
         </div>
@@ -239,104 +236,121 @@ When the user asks you to build or code a game system, feature, or script:
 
       {/* Inline Quick Key Entry Drawer if opened */}
       {showInlineKeyForm && (
-        <div className="p-3 bg-[#111320] border-b border-indigo-500/30 flex items-center space-x-3 text-xs">
-          <Key className="w-4 h-4 text-amber-400 flex-shrink-0" />
-          <span className="font-semibold text-zinc-200 flex-shrink-0">
+        <div className="p-3 bg-secondary/40 border-b border-border flex items-center gap-3 text-xs">
+          <Key className="h-4 w-4 text-amber-400 shrink-0" />
+          <span className="font-medium text-foreground shrink-0">
             {selectedProviderDef.name} Key:
           </span>
           <input
             type="password"
             value={inlineKeyInput}
             onChange={(e) => setInlineKeyInput(e.target.value)}
-            placeholder={`Paste your ${selectedProviderDef.name} key (${selectedProviderDef.keyPlaceholder})`}
-            className="flex-1 bg-black/60 border border-white/20 rounded-md px-3 py-1 text-xs text-white font-mono focus:outline-none focus:border-indigo-400"
+            placeholder={`Paste key (${selectedProviderDef.keyPlaceholder})`}
+            className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:border-ring"
           />
           <button
+            type="button"
             onClick={handleInlineSaveKey}
             disabled={!inlineKeyInput.trim()}
-            className="px-3 py-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors disabled:opacity-40"
+            className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-xs transition-colors disabled:opacity-40"
           >
-            Save to Keychain
+            Save Key
           </button>
           <button
+            type="button"
             onClick={() => setShowInlineKeyForm(false)}
-            className="text-zinc-400 hover:text-white text-xs px-2"
+            className="text-muted-foreground hover:text-foreground text-xs px-2"
           >
-            Close
+            Cancel
           </button>
         </div>
       )}
 
       {/* Main Chat Conversation Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {messages.map((msg) => {
           const isUser = msg.role === 'user';
           return (
             <div
               key={msg.id}
-              className={`flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`}
+              className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
             >
+              {/* Avatar */}
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 border ${
+                className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border ${
                   isUser
-                    ? 'bg-indigo-600/30 border-indigo-400/40 text-indigo-300'
-                    : 'bg-zinc-800/80 border-white/10 text-emerald-400'
+                    ? 'bg-secondary border-border text-foreground'
+                    : 'bg-card border-border text-primary'
                 }`}
               >
-                {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
               </div>
 
+              {/* Message Content Container */}
               <div
-                className={`max-w-3xl rounded-xl p-4 text-xs leading-relaxed ${
-                  isUser
-                    ? 'bg-indigo-600/20 border border-indigo-500/30 text-zinc-100 shadow-sm'
-                    : 'glass-panel border-white/10 text-zinc-200'
+                className={`max-w-3xl space-y-2 ${
+                  isUser ? 'items-end' : 'items-start flex-1'
                 }`}
               >
-                <div className="prose prose-invert max-w-none text-xs space-y-2 whitespace-pre-wrap font-sans">
-                  {msg.content}
-                </div>
+                {/* User Bubble */}
+                {isUser ? (
+                  <div className="rounded-2xl rounded-tr-sm bg-muted/80 border border-border px-4 py-2.5 text-xs text-foreground leading-relaxed">
+                    <p className="whitespace-pre-wrap">{msg.content}</p>
 
-                {/* Code Snippet Box if present */}
-                {msg.codeSnippet && (
-                  <div className="mt-3 rounded-lg overflow-hidden border border-white/15 bg-black/70">
-                    <div className="px-3 py-1.5 bg-white/[0.04] border-b border-white/10 flex items-center justify-between text-[11px] font-mono">
-                      <span className="text-zinc-400 flex items-center space-x-1.5">
-                        <FileCode2 className="w-3.5 h-3.5 text-indigo-400" />
-                        <span>{msg.codeSnippet.targetLocation} / {msg.codeSnippet.filename}</span>
-                      </span>
-                      <button
-                        onClick={() => copyCodeToClipboard(msg.codeSnippet!.code, msg.id)}
-                        className="flex items-center space-x-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
-                      >
-                        {copiedCodeId === msg.id ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span className="text-emerald-400 text-[10px]">Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3 h-3" />
-                            <span className="text-[10px]">Copy Luau Code</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                    <pre className="p-3 text-[11px] font-mono text-zinc-200 overflow-x-auto max-h-72 select-text">
-                      <code>{msg.codeSnippet.code}</code>
-                    </pre>
+                    {/* Attached files chips inside user bubble */}
+                    {msg.attachments && msg.attachments.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
+                        {msg.attachments.map((att) => (
+                          <span
+                            key={att.id}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/60 text-muted-foreground text-[10px] font-mono border border-border/40"
+                          >
+                            {att.type === 'image' && <ImageIcon className="h-2.5 w-2.5 text-blue-400" />}
+                            {att.type === 'luau' && <FileCode className="h-2.5 w-2.5 text-emerald-400" />}
+                            {att.type === 'markdown' && <FileText className="h-2.5 w-2.5 text-amber-400" />}
+                            {att.type === 'other' && <File className="h-2.5 w-2.5 text-muted-foreground" />}
+                            <span>{att.name}</span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                ) : (
+                  /* Assistant Turn */
+                  <div className="w-full space-y-2">
+                    {/* Live Thinking State & Tool Calls Accordion */}
+                    {msg.traceNodes && msg.traceNodes.length > 0 && (
+                      <ThinkingState
+                        nodes={msg.traceNodes}
+                        isLive={true}
+                        status={
+                          msg.isThinkingRunning
+                            ? 'running'
+                            : msg.traceNodes.some((n) => n.status === 'failed')
+                            ? 'failed'
+                            : 'completed'
+                        }
+                      />
+                    )}
 
-                {/* Metrics Footer */}
-                {msg.metrics && (
-                  <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] font-mono text-zinc-500">
-                    <span>
-                      Model: {msg.metrics.model} ({msg.metrics.durationMs}ms)
-                    </span>
-                    <span className="text-indigo-400 font-semibold">
-                      {msg.metrics.tokensInput + msg.metrics.tokensOutput} tokens (${msg.metrics.cost.toFixed(5)})
-                    </span>
+                    {/* Final Markdown Answer */}
+                    {msg.content && (
+                      <div className="rounded-2xl rounded-tl-sm bg-card/60 border border-border p-4 text-xs text-foreground leading-relaxed">
+                        <Markdown content={msg.content} />
+
+                        {/* Turn Metrics Footer */}
+                        {msg.metrics && (
+                          <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between text-[11px] font-mono text-muted-foreground">
+                            <span>
+                              Model: {msg.metrics.model} ({msg.metrics.durationMs}ms)
+                            </span>
+                            <span className="text-foreground font-semibold">
+                              {msg.metrics.tokensInput + msg.metrics.tokensOutput} tokens (${msg.metrics.cost.toFixed(5)})
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -344,93 +358,30 @@ When the user asks you to build or code a game system, feature, or script:
           );
         })}
 
-        {/* Loading Spinner */}
-        {isSubmitting && (
-          <div className="flex items-start space-x-3">
-            <div className="w-8 h-8 rounded-lg bg-zinc-800/80 border border-white/10 text-emerald-400 flex items-center justify-center">
-              <Bot className="w-4 h-4 animate-bounce" />
-            </div>
-            <div className="p-3 rounded-xl glass-panel border-white/10 text-xs text-zinc-300 flex items-center space-x-2">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-              <span className="font-mono">Planning architecture & generating Luau script...</span>
-            </div>
-          </div>
-        )}
-
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Quick Suggestion Chips */}
-      <div className="px-4 py-1.5 bg-[#08090e] border-t border-white/5 flex items-center space-x-2 overflow-x-auto">
-        <span className="text-[10px] font-mono text-zinc-500 flex items-center space-x-1 flex-shrink-0">
-          <Lightbulb className="w-3 h-3 text-amber-400" />
-          <span>Quick:</span>
-        </span>
-        {[
-          'Pet Hatching System with 3 egg rarities & luck multipliers',
-          'Leaderboard DataStore service with anti-spam remotes',
-          'Simulator Shop UI with Robux purchase hooks',
-          'Combat Hitbox raycaster with hit-stop & VFX',
-        ].map((prompt, i) => (
-          <button
-            key={i}
-            onClick={() => handleSendPrompt(prompt)}
-            className="text-[11px] px-2.5 py-0.5 rounded bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 text-zinc-300 hover:text-white transition-colors flex-shrink-0 truncate max-w-xs"
-          >
-            {prompt}
-          </button>
-        ))}
-      </div>
-
-      {/* Bottom Chat Prompt Input */}
-      <div className="p-3 border-t border-white/10 bg-[#0c0d14]">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendPrompt(promptInput);
-          }}
-          className="relative"
-        >
-          <textarea
-            rows={2}
-            value={promptInput}
-            onChange={(e) => setPromptInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendPrompt(promptInput);
-              }
-            }}
-            placeholder={
-              hasKey
-                ? "Describe what Roblox game, feature, mechanics or Luau script you want to build... (Enter to send)"
-                : "Enter your request here (paste your OpenRouter or Gemini API key above to start)..."
-            }
-            className="w-full bg-black/60 border border-white/15 rounded-xl pl-3 pr-24 py-2.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-indigo-400 transition-colors resize-none"
-          />
-
-          <div className="absolute right-2.5 bottom-3.5 flex items-center space-x-1.5">
-            {isSubmitting ? (
-              <button
-                type="button"
-                onClick={onStopPrompt}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold shadow-md active:scale-95"
-              >
-                <StopCircle className="w-3.5 h-3.5" />
-                <span>Cancel</span>
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={!promptInput.trim()}
-                className="flex items-center space-x-1 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-semibold shadow-md shadow-indigo-500/25 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Build</span>
-              </button>
-            )}
-          </div>
-        </form>
+      {/* Pinned Bottom Composer with Removable Attachment Tray */}
+      <div className="p-3 border-t border-border bg-card/40">
+        <AttachmentComposerTray
+          value={promptInput}
+          onChange={setPromptInput}
+          onSubmit={(text, attachments) => handleSendPrompt(text, attachments)}
+          onStop={handleStop}
+          isLoading={isSubmitting}
+          disabled={!hasKey && !inlineKeyInput.trim()}
+          placeholder={
+            hasKey
+              ? 'Describe what Roblox system, mechanics, or Luau script to engineer... (Enter to send)'
+              : 'Connect your API key above to start building...'
+          }
+          quickPrompts={[
+            'Pet Hatching System with 3 egg rarities & luck multipliers',
+            'Leaderboard DataStore service with anti-spam remotes',
+            'Combat Raycast hitbox with hit-stop & VFX',
+            'Simulator Shop UI with Robux dev products',
+          ]}
+        />
       </div>
     </div>
   );

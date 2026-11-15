@@ -1,4 +1,6 @@
 import { ProviderId } from '../../providers/types';
+import type { TraceNode } from '../components/ui/ai-thinking-and-tool-calls';
+import type { AttachedFile } from '../components/ui/attachment-composer-tray';
 
 export type TabId = 'dashboard' | 'builder' | 'assets' | 'favorites' | 'settings';
 
@@ -80,6 +82,10 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: string;
+  traceNodes?: TraceNode[];
+  isThinkingRunning?: boolean;
+  isStreaming?: boolean;
+  attachments?: AttachedFile[];
   planSteps?: {
     id: string;
     title: string;
