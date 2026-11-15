@@ -2,8 +2,6 @@ import * as React from 'react';
 import {
   LayoutDashboard,
   Hammer,
-  Palette,
-  Star,
   Settings,
   FolderOpen,
   Plus,
@@ -58,10 +56,8 @@ export const TopBar: React.FC<TopBarProps> = ({
   };
 
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-4 w-4" /> },
-    { id: 'builder', label: 'Builder', icon: <Hammer className="h-4 w-4" /> },
-    { id: 'assets', label: 'Assets', icon: <Palette className="h-4 w-4" /> },
-    { id: 'favorites', label: 'Favorites', icon: <Star className="h-4 w-4" /> },
+    { id: 'home', label: 'Home', icon: <LayoutDashboard className="h-4 w-4" /> },
+    { id: 'build', label: 'Build', icon: <Hammer className="h-4 w-4" /> },
     { id: 'settings', label: 'Settings', icon: <Settings className="h-4 w-4" /> },
   ];
 

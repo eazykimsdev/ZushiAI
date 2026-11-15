@@ -256,6 +256,36 @@ export const api = {
     sessionStorage.removeItem(`temp_key_${provider}`);
   },
 
+  async checkStudioConnection(port = 4243): Promise<boolean> {
+    if (isTauriEnvironment()) {
+      try {
+        return await invoke<boolean>('check_studio_bridge', { port });
+      } catch {
+        return false;
+      }
+    }
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 600);
+      const res = await fetch(`http://127.0.0.1:${port}/ping`, { signal: controller.signal });
+      clearTimeout(id);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async checkVaultPath(path: string): Promise<{ exists: boolean; noteCount: number }> {
+    if (isTauriEnvironment()) {
+      try {
+        return await invoke<{ exists: boolean; noteCount: number }>('check_vault_path', { path });
+      } catch {
+        return { exists: false, noteCount: 0 };
+      }
+    }
+    return { exists: true, noteCount: 1333 };
+  },
+
   rememberLastWorkingModel(provider: ProviderId, model: string): void {
     try {
       localStorage.setItem(`zushi_last_working_model_${provider}`, model);

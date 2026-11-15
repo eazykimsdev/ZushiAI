@@ -1,230 +1,326 @@
 import * as React from 'react';
 import {
-  Database,
-  Receipt,
-  ShieldAlert,
-  Trophy,
-  Swords,
-  Timer,
-  Boxes,
-  Scroll,
-  Mountain,
-  SunMedium,
-  Footprints,
-  Compass,
-  ShoppingBag,
-  Gift,
-  FolderTree,
+  Plus,
   Search,
-  ChevronDown,
+  Settings,
+  FolderOpen,
+  Trash2,
+  Edit2,
+  Check,
+  X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
+import { Project, StatusLights } from '../../types';
 
 interface SidebarProps {
-  onInsertMacroBlock?: (blockTitle: string, blockCategory: string) => void;
+  projects: Project[];
+  activeProject: Project | null;
+  onSelectProject: (project: Project) => void;
+  onNewBuild: () => void;
+  onRenameProject: (id: string, newName: string) => Promise<void>;
+  onDeleteProject: (id: string) => Promise<void>;
+  statusLights: StatusLights;
+  onOpenSettings: () => void;
+  onFixStatus: (type: 'key' | 'studio' | 'vault') => void;
 }
 
-interface PaletteItem {
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-}
+export const Sidebar: React.FC<SidebarProps> = ({
+  projects,
+  activeProject,
+  onSelectProject,
+  onNewBuild,
+  onRenameProject,
+  onDeleteProject,
+  statusLights,
+  onOpenSettings,
+  onFixStatus,
+}) => {
+  const [collapsed, setCollapsed] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [editingProjectId, setEditingProjectId] = React.useState<string | null>(null);
+  const [editName, setEditName] = React.useState('');
 
-interface PaletteCategory {
-  id: string;
-  name: string;
-  items: PaletteItem[];
-}
+  const filteredProjects = React.useMemo(() => {
+    if (!searchQuery.trim()) return projects;
+    const q = searchQuery.toLowerCase();
+    return projects.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        (p.genre && p.genre.toLowerCase().includes(q))
+    );
+  }, [projects, searchQuery]);
 
-export const Sidebar: React.FC<SidebarProps> = ({ onInsertMacroBlock }) => {
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [collapsedCategories, setCollapsedCategories] = React.useState<Record<string, boolean>>({});
-
-  const toggleCategory = (id: string) => {
-    setCollapsedCategories((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
+  const handleStartRename = (p: Project, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingProjectId(p.id);
+    setEditName(p.name);
   };
 
-  const categories: PaletteCategory[] = [
-    {
-      id: 'core',
-      name: 'Core Systems',
-      items: [
-        {
-          title: 'DataStore Safety',
-          description: 'Session-locked player data with auto-save & retry budgets',
-          icon: <Database className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'ProcessReceipt',
-          description: 'Idempotent DevProduct & Pass purchase transactions',
-          icon: <Receipt className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Anti-Exploit Remote Guard',
-          description: 'Server-authoritative rate-limits & payload type checks',
-          icon: <ShieldAlert className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Global Leaderboards',
-          description: 'OrderedDataStore synced podium rankings',
-          icon: <Trophy className="h-4 w-4 text-muted-foreground" />,
-        },
-      ],
-    },
-    {
-      id: 'combat',
-      name: 'Gameplay & Combat',
-      items: [
-        {
-          title: 'Hitbox / Melee Combat',
-          description: 'Spatial query raycast hitbox with hit-stop & VFX',
-          icon: <Swords className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Round & Match Loop',
-          description: 'Intermission, map teleport, win-condition state machine',
-          icon: <Timer className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Inventory & Backpack',
-          description: 'Stackable items, hotbar equip, weight constraints',
-          icon: <Boxes className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Quest & Achievement Engine',
-          description: 'Progress tracker, kill/collect triggers, claim rewards',
-          icon: <Scroll className="h-4 w-4 text-muted-foreground" />,
-        },
-      ],
-    },
-    {
-      id: 'monetization',
-      name: 'Monetization & Retention',
-      items: [
-        {
-          title: 'Pet Hatching & Probability',
-          description: '2026 odds compliance, weighted RNG, unbox animations',
-          icon: <Gift className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'In-Game Currency Shop',
-          description: 'Coin/Gem purchases, tiered gamepass perks',
-          icon: <ShoppingBag className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'FTUE & Onboarding Guide',
-          description: 'First 60s guide arrows, stuck detection, skip hints',
-          icon: <Compass className="h-4 w-4 text-muted-foreground" />,
-        },
-      ],
-    },
-    {
-      id: 'world',
-      name: 'World & Environment',
-      items: [
-        {
-          title: 'Dungeon & Obby Generation',
-          description: 'Procedural checkpoint obby with moving hazards',
-          icon: <Mountain className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Atmosphere & Day/Night Lighting',
-          description: 'Atmosphere presets, sun-ray bloom, color correction',
-          icon: <SunMedium className="h-4 w-4 text-muted-foreground" />,
-        },
-        {
-          title: 'Sound & Audio Layer Pool',
-          description: 'Combat hits, UI clicks, footsteps with spatial roll-off',
-          icon: <Footprints className="h-4 w-4 text-muted-foreground" />,
-        },
-      ],
-    },
-  ];
+  const handleSaveRename = async (id: string, e?: React.MouseEvent | React.FormEvent) => {
+    e?.stopPropagation();
+    if (!editName.trim()) return;
+    await onRenameProject(id, editName.trim());
+    setEditingProjectId(null);
+  };
 
-  const filteredCategories = categories.map((cat) => ({
-    ...cat,
-    items: cat.items.filter(
-      (item) =>
-        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.description.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-  })).filter((cat) => cat.items.length > 0);
+  const handleCancelRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingProjectId(null);
+  };
+
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await onDeleteProject(id);
+  };
 
   return (
-    <aside className="w-64 border-r border-border bg-card flex flex-col select-none h-full overflow-hidden shrink-0">
-      {/* Header with Search */}
-      <div className="p-3 border-b border-border space-y-2">
-        <div className="flex items-center gap-2 px-1">
-          <FolderTree className="h-4 w-4 text-primary" />
-          <span className="text-xs font-semibold text-foreground">
-            Block Palette
-          </span>
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search mechanics..."
-            className="w-full bg-background border border-border rounded-[10px] pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring"
+    <aside
+      className={`border-r border-border bg-surface-1 flex flex-col select-none transition-all duration-200 h-full shrink-0 z-20 ${
+        collapsed ? 'w-14' : 'w-[260px]'
+      }`}
+    >
+      {/* Brand Header */}
+      <div className="h-13 border-b border-border px-3.5 flex items-center justify-between shrink-0">
+        {!collapsed ? (
+          <div className="flex items-center gap-2.5 truncate">
+            <img
+              src="/logo.png"
+              alt="ZushiAI"
+              className="h-6 w-6 rounded-md object-contain shrink-0"
+              onError={(e) => {
+                // Text wordmark fallback if image fails to render
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+            <span className="font-semibold text-sm tracking-tight text-foreground">
+              ZushiAI
+            </span>
+          </div>
+        ) : (
+          <img
+            src="/logo.png"
+            alt="Z"
+            className="h-6 w-6 mx-auto rounded-md object-contain"
           />
-        </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => setCollapsed(!collapsed)}
+          className="p-1 rounded-[6px] hover:bg-surface-2 text-muted-foreground hover:text-foreground transition-colors"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
       </div>
 
-      {/* Collapsible Category List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2">
-        {filteredCategories.map((category) => {
-          const isCollapsed = Boolean(collapsedCategories[category.id]);
-          return (
-            <div key={category.id} className="space-y-1">
-              {/* Category Header */}
-              <button
-                type="button"
-                onClick={() => toggleCategory(category.id)}
-                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-secondary text-xs text-muted-foreground hover:text-foreground transition-colors duration-140"
-              >
-                <span className="font-medium text-[11px] uppercase tracking-wider">
-                  {category.name}
-                </span>
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform duration-140 ${
-                    isCollapsed ? '-rotate-90' : 'rotate-0'
-                  }`}
-                />
-              </button>
+      {/* New Build Action */}
+      <div className="p-3 border-b border-border/50 shrink-0">
+        <button
+          type="button"
+          onClick={onNewBuild}
+          className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-[10px] bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium transition-colors shadow-sm ${
+            collapsed ? 'px-0' : ''
+          }`}
+          title="Start a new build"
+        >
+          <Plus className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>New build</span>}
+        </button>
+      </div>
 
-              {/* Items in Category (Collapsible) */}
-              {!isCollapsed && (
-                <div className="space-y-0.5 pl-1">
-                  {category.items.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => onInsertMacroBlock?.(item.title, category.name)}
-                      className="w-full flex items-start gap-2.5 p-2 rounded-[10px] hover:bg-secondary border border-transparent hover:border-border text-left transition-colors duration-140 group"
-                    >
-                      <div className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-foreground">
-                        {item.icon}
+      {/* Search Input (When expanded) */}
+      {!collapsed && (
+        <div className="px-3 pt-2.5 pb-1 shrink-0">
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-muted-foreground absolute left-2.5 top-2.5" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search builds..."
+              className="w-full bg-surface-2 border border-border rounded-[8px] pl-8 pr-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring transition-colors"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Projects List */}
+      <div className="flex-1 overflow-y-auto px-2 py-2 space-y-1">
+        {!collapsed && (
+          <div className="px-2 pt-1 pb-1 text-[11px] font-medium text-muted-foreground">
+            Recent builds
+          </div>
+        )}
+
+        {filteredProjects.length === 0 ? (
+          !collapsed && (
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground leading-relaxed">
+              No builds yet.
+              <br />
+              <span className="text-[11px] opacity-75">Click "New build" to start.</span>
+            </div>
+          )
+        ) : (
+          filteredProjects.map((project) => {
+            const isSelected = activeProject?.id === project.id;
+            const isEditing = editingProjectId === project.id;
+
+            return (
+              <div
+                key={project.id}
+                onClick={() => onSelectProject(project)}
+                className={`group flex items-center justify-between px-2.5 py-2 rounded-[8px] text-xs cursor-pointer transition-colors ${
+                  isSelected
+                    ? 'bg-surface-2 text-foreground font-medium border border-border/80'
+                    : 'text-muted-foreground hover:bg-surface-2/60 hover:text-foreground'
+                }`}
+                title={project.name}
+              >
+                <div className="flex items-center gap-2 truncate flex-1 mr-1">
+                  <FolderOpen className={`h-3.5 w-3.5 shrink-0 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                  {!collapsed && (
+                    isEditing ? (
+                      <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSaveRename(project.id)}
+                          autoFocus
+                          className="bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground flex-1 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => handleSaveRename(project.id, e)}
+                          className="text-emerald-400 hover:text-emerald-300 p-0.5"
+                        >
+                          <Check className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelRename}
+                          className="text-muted-foreground hover:text-foreground p-0.5"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-medium text-foreground truncate">
-                          {item.title}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground line-clamp-1 leading-normal">
-                          {item.description}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
+                    ) : (
+                      <span className="truncate">{project.name}</span>
+                    )
+                  )}
                 </div>
+
+                {!collapsed && !isEditing && (
+                  <div className="hidden group-hover:flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={(e) => handleStartRename(project, e)}
+                      className="p-1 rounded hover:bg-background text-muted-foreground hover:text-foreground"
+                      title="Rename"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDelete(project.id, e)}
+                      className="p-1 rounded hover:bg-background text-muted-foreground hover:text-rose-400"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Bottom Status Rows & Settings */}
+      <div className="border-t border-border p-2.5 space-y-2 shrink-0 bg-surface-1">
+        {/* Status Rows */}
+        <div className="space-y-1.5 text-xs">
+          {/* Key Status */}
+          <div
+            onClick={() => onFixStatus('key')}
+            className={`px-2 py-1 rounded-[6px] flex items-center justify-between cursor-pointer transition-colors ${
+              collapsed ? 'justify-center' : ''
+            } hover:bg-surface-2`}
+            title={statusLights.keyConnected ? 'Key connected' : 'Click to configure key'}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  statusLights.keyConnected ? 'bg-emerald-400' : 'bg-rose-400'
+                }`}
+              />
+              {!collapsed && (
+                <span className="text-muted-foreground text-[11px] truncate">
+                  Key: {statusLights.keyConnected ? 'Connected' : 'Not configured'}
+                </span>
               )}
             </div>
-          );
-        })}
+          </div>
+
+          {/* Studio Status */}
+          <div
+            onClick={() => onFixStatus('studio')}
+            className={`px-2 py-1 rounded-[6px] flex items-center justify-between cursor-pointer transition-colors ${
+              collapsed ? 'justify-center' : ''
+            } hover:bg-surface-2`}
+            title={statusLights.studioConnected ? 'Studio bridge online' : 'Click to pair with Studio'}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  statusLights.studioConnected ? 'bg-emerald-400' : 'bg-muted-foreground/40'
+                }`}
+              />
+              {!collapsed && (
+                <span className="text-muted-foreground text-[11px] truncate">
+                  Studio: {statusLights.studioConnected ? 'Paired (4243)' : 'Not paired'}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Vault Status */}
+          <div
+            onClick={() => onFixStatus('vault')}
+            className={`px-2 py-1 rounded-[6px] flex items-center justify-between cursor-pointer transition-colors ${
+              collapsed ? 'justify-center' : ''
+            } hover:bg-surface-2`}
+            title={statusLights.vaultLoaded ? 'Vault loaded' : 'Click to verify vault path'}
+          >
+            <div className="flex items-center gap-2 truncate">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  statusLights.vaultLoaded ? 'bg-emerald-400' : 'bg-rose-400'
+                }`}
+              />
+              {!collapsed && (
+                <span className="text-muted-foreground text-[11px] truncate">
+                  Vault: {statusLights.vaultLoaded ? '1,333 notes' : 'Missing path'}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Settings Button */}
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className={`w-full flex items-center gap-2 py-1.5 px-2.5 rounded-[8px] hover:bg-surface-2 text-muted-foreground hover:text-foreground text-xs transition-colors ${
+            collapsed ? 'justify-center px-0' : ''
+          }`}
+          title="Settings"
+        >
+          <Settings className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>Settings</span>}
+        </button>
       </div>
     </aside>
   );

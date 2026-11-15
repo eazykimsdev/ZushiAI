@@ -87,6 +87,50 @@ pub fn delete_api_key(provider: String) -> Result<(), String> {
     keychain::delete_api_key(&provider)
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct VaultInfo {
+    pub exists: bool,
+    #[serde(rename = "noteCount")]
+    pub note_count: usize,
+}
+
+#[tauri::command]
+pub fn check_vault_path(path: String) -> Result<VaultInfo, String> {
+    let p = std::path::Path::new(&path);
+    if !p.exists() {
+        return Ok(VaultInfo { exists: false, note_count: 0 });
+    }
+    let mut count = 0;
+    fn count_md(dir: &std::path::Path, count: &mut usize) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    count_md(&path, count);
+                } else if path.extension().and_then(|e| e.to_str()) == Some("md") {
+                    *count += 1;
+                }
+            }
+        }
+    }
+    count_md(p, &mut count);
+    Ok(VaultInfo { exists: true, note_count: count })
+}
+
+#[tauri::command]
+pub async fn check_studio_bridge(port: Option<u16>) -> Result<bool, String> {
+    let p = port.unwrap_or(4243);
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(600))
+        .build() {
+            Ok(c) => c,
+            Err(_) => return Ok(false),
+        };
+    let url = format!("http://127.0.0.1:{}/ping", p);
+    let is_connected = client.get(&url).send().await.map_or(false, |r| r.status().is_success());
+    Ok(is_connected)
+}
+
 #[tauri::command]
 pub async fn fetch_provider_models(
     provider: String,

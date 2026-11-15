@@ -29,7 +29,22 @@ ZushiAI is an AI Roblox game builder desktop application (BYOK, Studio bridge, b
 
 ---
 
-### Task 1: Remove Everything Fake ⏳ PENDING
+### Task 1: Remove Everything Fake ✅ COMPLETED
+- **Seeded Project Removed**: Eliminated the hardcoded "Aether Blades: Arena Legends" seed logic and added automatic purge of leftover seed entries from SQLite. First launch presents an honest, clean empty state.
+- **Removed Fake Block Palette**: Completely deleted the artificial macro block list with fake colored category badges (`SERVER`, `COMBAT`, etc.). Replaced sidebar with a real SQLite build manager (search, rename, delete).
+- **Accurate Real Statistics**:
+  - Replaced misleading `"100% success rate"` placeholder on 0 runs with `"-"`.
+  - Total runs displays `"-"` when no executions have occurred.
+  - Real token and dollar spend tracked directly from provider usage metadata.
+- **Unbuilt Tabs Eliminated**: Removed unfinished tabs (`DashboardTab`, `AssetsTab`, `FavoritesTab`). Kept strictly **Home** (`HomeTab.tsx`), **Build** (`BuilderTab.tsx`), **Projects** (collapsible SQLite sidebar), and **Settings** (`SettingsTab.tsx`).
+- **100% Real Status Verification**:
+  - Key: Verified via Keychain (`api.hasApiKey`) and 1-token test.
+  - Studio Bridge: Live ping against `http://127.0.0.1:4243/ping` with timeout.
+  - Vault: Live filesystem inspection via Rust command `check_vault_path` measuring 1,333 actual markdown notes on disk.
+- **Helpful Empty States**: Zero lorem ipsum or fake "coming soon" placeholders; all empty states are actionable, human sentences.
+
+---
+
 ### Task 2: Brand + Design System ⏳ PENDING
 ### Task 3: Layout ⏳ PENDING
 ### Task 4: Components & Live Wiring ⏳ PENDING

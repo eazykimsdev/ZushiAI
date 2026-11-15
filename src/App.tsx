@@ -3,10 +3,8 @@ import { TopBar } from './components/layout/TopBar';
 import { Sidebar } from './components/layout/Sidebar';
 import { RightPanel } from './components/layout/RightPanel';
 import { ProcessDrawer } from './components/layout/ProcessDrawer';
-import { DashboardTab } from './components/tabs/DashboardTab';
+import { HomeTab } from './components/tabs/HomeTab';
 import { BuilderTab } from './components/tabs/BuilderTab';
-import { AssetsTab } from './components/tabs/AssetsTab';
-import { FavoritesTab } from './components/tabs/FavoritesTab';
 import { SettingsTab } from './components/tabs/SettingsTab';
 import { ProjectModal } from './components/projects/ProjectModal';
 import {
@@ -23,7 +21,8 @@ import { api } from './lib/api';
 import { ProviderId } from '../providers/types';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [pendingPrompt, setPendingPrompt] = useState<{ text: string; attachments?: any[] } | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -117,26 +116,28 @@ export const App: React.FC = () => {
         if (isMounted) setSettings(loadedSettings);
 
         const loadedProjects = await api.getProjects();
-        if (isMounted) {
-          if (loadedProjects.length === 0) {
-            const sample = await api.createProject(
-              'Aether Blades: Arena Legends',
-              'Anime / Battlegrounds Combat',
-              'Fast-paced combat with raycast hitboxes, dash mechanics, weapon abilities, and leaderboard podiums.',
-              null
-            );
-            setProjects([sample]);
-            setActiveProject(sample);
-            addLog(`Initialized seed project "${sample.name}" in SQLite database.`, 'info');
-          } else {
-            setProjects(loadedProjects);
-            setActiveProject(loadedProjects[0]);
+        // Remove old seeded project from database if present
+        for (const p of loadedProjects) {
+          if (p.name.includes('Aether Blades')) {
+            await api.deleteProject(p.id).catch(() => {});
           }
+        }
+        const cleanProjects = loadedProjects.filter((p) => !p.name.includes('Aether Blades'));
+        if (isMounted) {
+          setProjects(cleanProjects);
+          setActiveProject(cleanProjects[0] || null);
         }
 
         const hasKey = await api.hasApiKey(loadedSettings.activeProvider);
+        const studioOk = await api.checkStudioConnection().catch(() => false);
+        const vaultRes = await api.checkVaultPath(loadedSettings.vaultPath).catch(() => ({ exists: false, noteCount: 0 }));
+
         if (isMounted) {
-          setStatusLights((prev) => ({ ...prev, keyConnected: hasKey }));
+          setStatusLights({
+            keyConnected: hasKey,
+            studioConnected: studioOk,
+            vaultLoaded: vaultRes.exists && vaultRes.noteCount > 0,
+          });
         }
 
         const history = await api.getRunHistory();
@@ -244,15 +245,6 @@ export const App: React.FC = () => {
     addLog(`Deleted project "${target?.name || id}" from SQLite.`, 'warn');
   };
 
-  const handleInsertMacroBlock = (blockTitle: string, blockCategory: string) => {
-    addLog(`Inserted macro block "${blockTitle}" [${blockCategory}] into Builder plan.`, 'cmd');
-    setActionState((prev) => ({
-      ...prev,
-      currentAction: `Queued block: ${blockTitle}`,
-    }));
-    setActiveTab('builder');
-  };
-
   const handleStopPrompt = () => {
     setActionState((prev) => ({
       ...prev,
@@ -289,35 +281,65 @@ export const App: React.FC = () => {
 
       {/* Main Layout Body: Left Sidebar + Center Workspace + Right Panel */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar Palette */}
-        <Sidebar onInsertMacroBlock={handleInsertMacroBlock} />
+        {/* Left Real Projects Sidebar */}
+        <Sidebar
+          projects={projects}
+          activeProject={activeProject}
+          onSelectProject={(p) => {
+            setActiveProject(p);
+            setActiveTab('build');
+          }}
+          onNewBuild={() => {
+            setActiveProject(null);
+            setActiveTab('home');
+          }}
+          onRenameProject={async (id, newName) => {
+            const current = projects.find((p) => p.id === id);
+            if (current) {
+              await api.updateProject(id, newName, current.genre, current.notes, current.styleReferenceImage);
+              const updated = await api.getProjects();
+              setProjects(updated);
+              if (activeProject?.id === id) {
+                setActiveProject(updated.find((p) => p.id === id) || null);
+              }
+            }
+          }}
+          onDeleteProject={async (id) => {
+            await api.deleteProject(id);
+            const updated = await api.getProjects();
+            setProjects(updated);
+            if (activeProject?.id === id) {
+              setActiveProject(updated[0] || null);
+            }
+          }}
+          statusLights={statusLights}
+          onOpenSettings={() => setActiveTab('settings')}
+          onFixStatus={() => {
+            setActiveTab('settings');
+          }}
+        />
 
         {/* Center Main Workspace */}
         <main className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-          {activeTab === 'dashboard' && (
-            <DashboardTab
-              activeProject={activeProject}
-              projects={projects}
-              onSelectProject={(p) => setActiveProject(p)}
-              onOpenNewProjectModal={() => {
-                setProjectToEdit(null);
-                setIsProjectModalOpen(true);
-              }}
-              onEditActiveProject={() => {
-                setProjectToEdit(activeProject);
-                setIsProjectModalOpen(true);
-              }}
-              setActiveTab={setActiveTab}
+          {activeTab === 'home' && (
+            <HomeTab
               statusLights={statusLights}
-              spentBudget={actionState.spentBudget}
+              settings={settings}
+              setActiveTab={setActiveTab}
+              onLaunchBuild={(prompt, atts) => {
+                setPendingPrompt({ text: prompt, attachments: atts });
+                setActiveTab('build');
+              }}
             />
           )}
 
-          {activeTab === 'builder' && (
+          {activeTab === 'build' && (
             <BuilderTab
               activeProject={activeProject}
               settings={settings}
               actionState={actionState}
+              initialPrompt={pendingPrompt}
+              onClearInitialPrompt={() => setPendingPrompt(null)}
               onRunPrompt={() => {}}
               onStopPrompt={handleStopPrompt}
               onUpdateSettings={handleUpdateSettings}
@@ -327,10 +349,6 @@ export const App: React.FC = () => {
               onRecordSpend={handleRecordSpend}
             />
           )}
-
-          {activeTab === 'assets' && <AssetsTab activeProject={activeProject} />}
-
-          {activeTab === 'favorites' && <FavoritesTab />}
 
           {activeTab === 'settings' && (
             <SettingsTab
@@ -348,7 +366,7 @@ export const App: React.FC = () => {
           scoreboard={scoreboard}
           runHistory={runHistory}
           onStartAgent={() => {
-            if (activeTab !== 'builder') setActiveTab('builder');
+            if (activeTab !== 'build') setActiveTab('build');
           }}
           onPauseAgent={() => {
             setActionState((prev) => ({

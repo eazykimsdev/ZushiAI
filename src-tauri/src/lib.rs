@@ -33,6 +33,8 @@ pub fn run() {
             commands::delete_api_key,
             commands::fetch_provider_models,
             commands::test_api_key,
+            commands::check_vault_path,
+            commands::check_studio_bridge,
             commands::run_ai_chat,
             commands::get_run_history,
             commands::record_run_history,

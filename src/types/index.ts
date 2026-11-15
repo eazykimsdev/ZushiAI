@@ -2,7 +2,7 @@ import { ProviderId } from '../../providers/types';
 import type { TraceNode } from '../components/ui/ai-thinking-and-tool-calls';
 import type { AttachedFile } from '../components/ui/attachment-composer-tray';
 
-export type TabId = 'dashboard' | 'builder' | 'assets' | 'favorites' | 'settings';
+export type TabId = 'home' | 'build' | 'settings';
 
 export interface Project {
   id: string;

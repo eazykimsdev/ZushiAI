@@ -189,13 +189,13 @@ export const RightPanel: React.FC<RightPanelProps> = ({
             <div className="p-3 rounded-[10px] bg-secondary/60 border border-border text-center">
               <div className="text-[11px] text-muted-foreground">Total Runs</div>
               <div className="text-base font-mono font-semibold text-foreground mt-0.5">
-                {scoreboard.totalRuns}
+                {scoreboard.totalRuns === 0 ? '-' : scoreboard.totalRuns}
               </div>
             </div>
             <div className="p-3 rounded-[10px] bg-secondary/60 border border-border text-center">
               <div className="text-[11px] text-muted-foreground">Success Rate</div>
               <div className="text-base font-mono font-semibold text-emerald-400 mt-0.5">
-                {scoreboard.successRate}%
+                {scoreboard.totalRuns === 0 ? '-' : `${scoreboard.successRate}%`}
               </div>
             </div>
           </div>

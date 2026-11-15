@@ -20,6 +20,8 @@ interface BuilderTabProps {
   activeProject: Project | null;
   settings: UserSettings;
   actionState: AgentActionState;
+  initialPrompt?: { text: string; attachments?: AttachedFile[] } | null;
+  onClearInitialPrompt?: () => void;
   onRunPrompt: (prompt: string) => void;
   onStopPrompt: () => void;
   onUpdateSettings?: (newSettings: Partial<UserSettings>) => void;
@@ -33,6 +35,8 @@ export const BuilderTab: React.FC<BuilderTabProps> = ({
   activeProject,
   settings,
   actionState,
+  initialPrompt,
+  onClearInitialPrompt,
   hasKey,
   onUpdateSettings,
   onSaveKey,
@@ -68,6 +72,13 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
   ]);
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (initialPrompt && initialPrompt.text.trim()) {
+      handleSendPrompt(initialPrompt.text, initialPrompt.attachments || []);
+      onClearInitialPrompt?.();
+    }
+  }, [initialPrompt]);
 
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
