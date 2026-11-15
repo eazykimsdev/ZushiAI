@@ -23,12 +23,14 @@ import {
 import { PROVIDERS, ProviderId, LiveModelInfo } from '../../../providers/types';
 import { UserSettings } from '../../types';
 import { api, TestKeyResult } from '../../lib/api';
+import { ProfileSection } from './ProfileSection';
 
 interface SettingsTabProps {
   settings: UserSettings;
   onUpdateSettings: (newSettings: Partial<UserSettings>) => void;
   onKeyStatusChange: () => void;
   onAddLog: (message: string, level?: 'info' | 'warn' | 'error' | 'success') => void;
+  focusSection?: 'profile' | 'key' | 'studio' | 'vault' | null;
 }
 
 export type KeyConnectionState = 'not_set' | 'checking' | 'connected' | 'failed';
@@ -38,6 +40,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   onUpdateSettings,
   onKeyStatusChange,
   onAddLog,
+  focusSection,
 }) => {
   const [apiKeyInput, setApiKeyInput] = React.useState('');
   const [showKey, setShowKey] = React.useState(false);
@@ -90,16 +93,16 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             if (settings.activeModel !== lastWorking) {
               onUpdateSettings({ activeModel: lastWorking });
             }
-          } else if (!fetched.some((m) => m.id === settings.activeModel)) {
-            // Default to first or recommended model
+          } else if (!settings.activeModel) {
+            // Only pre-select when nothing is chosen. Never swap a saved choice silently.
             const best = fetched.find((m) => m.recommended) || fetched[0];
             if (best) onUpdateSettings({ activeModel: best.id });
           }
         } else {
-          setModels(selectedProviderDef.fallbackModels);
+          setModels([]);
         }
       } catch {
-        setModels(selectedProviderDef.fallbackModels);
+        setModels([]);
       } finally {
         setLoadingModels(false);
       }
@@ -127,11 +130,31 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
     checkVault();
   }, [checkVault]);
 
+  React.useEffect(() => {
+    if (!focusSection) return;
+    const t = setTimeout(() => document.getElementById('settings-' + focusSection)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    return () => clearTimeout(t);
+  }, [focusSection]);
+
+  const chooseVaultFolder = async () => {
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog');
+      const picked = await open({ directory: true, multiple: false, title: 'Choose your LihFolk vault folder' });
+      if (typeof picked === 'string' && picked) {
+        onUpdateSettings({ vaultPath: picked });
+        setTimeout(() => onKeyStatusChange(), 150);
+      }
+    } catch {
+      onAddLog('Folder picker is only available in the desktop app. Paste the path instead.', 'warn');
+    }
+  };
+
   const pingStudio = async () => {
     setStudioStatus('checking');
     try {
       const ok = await api.checkStudioConnection();
       setStudioStatus(ok ? 'connected' : 'offline');
+      onKeyStatusChange();
     } catch {
       setStudioStatus('offline');
     }
@@ -234,6 +257,8 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
 
   return (
     <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto space-y-6 select-none">
+      <ProfileSection settings={settings} onUpdateSettings={onUpdateSettings} />
+
       {/* Top Banner: Security Guarantee */}
       <div className="surface-card p-4 flex items-start gap-3.5">
         <div className="p-2 rounded-[10px] bg-secondary text-primary border border-border">
@@ -256,7 +281,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       </div>
 
       {/* Provider & Model Selection */}
-      <div className="surface-card p-5 space-y-4">
+      <div id="settings-key" className="surface-card p-5 space-y-4 scroll-mt-6">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <Cpu className="h-4 w-4 text-primary" />
@@ -292,7 +317,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                     onClick={() => {
                       onUpdateSettings({
                         activeProvider: pid,
-                        activeModel: prov.defaultModel,
+                        activeModel: '',
                       });
                       setTestResult(null);
                       setKeyState('not_set');
@@ -709,7 +734,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       </div>
 
       {/* Studio Pairing & Bridge */}
-      <div className="surface-card p-5 space-y-4">
+      <div id="settings-studio" className="surface-card p-5 space-y-4 scroll-mt-6">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <Radio className="h-4 w-4 text-primary" />
@@ -761,7 +786,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       </div>
 
       {/* Knowledge Vault Path */}
-      <div className="surface-card p-5 space-y-4">
+      <div id="settings-vault" className="surface-card p-5 space-y-4 scroll-mt-6">
         <div className="flex items-center justify-between border-b border-border pb-3">
           <div className="flex items-center gap-2">
             <Folder className="h-4 w-4 text-primary" />
@@ -769,6 +794,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
               LihFolk Engineering Vault
             </h3>
           </div>
+          <button
+            type="button"
+            onClick={chooseVaultFolder}
+            className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors mr-3"
+          >
+            <Folder className="h-3 w-3" />
+            <span>Choose folder</span>
+          </button>
           <button
             type="button"
             onClick={checkVault}
@@ -793,6 +826,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
             type="text"
             value={settings.vaultPath}
             onChange={(e) => onUpdateSettings({ vaultPath: e.target.value })}
+            onBlur={() => onKeyStatusChange()}
             className="w-full bg-background border border-border rounded-[10px] px-3 py-2 text-xs text-foreground font-mono focus:outline-none focus:border-ring"
           />
           <p className="text-[11px] text-muted-foreground">

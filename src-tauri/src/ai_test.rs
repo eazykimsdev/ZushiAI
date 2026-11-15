@@ -107,8 +107,8 @@ pub async fn fetch_models_for_provider(
                             id,
                             name,
                             context_length: ctx,
-                            cost_per_million_input: Some(0.15),
-                            cost_per_million_output: Some(0.60),
+                            cost_per_million_input: None,
+                            cost_per_million_output: None,
                             description: desc,
                         });
                     }

@@ -30,6 +30,9 @@ interface BuilderTabProps {
   onSaveKey: (provider: ProviderId, key: string) => Promise<void>;
   onAddLog: (message: string, level?: 'info' | 'warn' | 'error' | 'success' | 'cmd', badge?: string) => void;
   onRecordSpend: (cost: number) => void;
+  onRunningChange?: (running: boolean) => void;
+  onAssistantMessage?: (message: ChatMessage | null) => void;
+  onOpenSettings?: (focus: 'profile' | 'key' | 'studio' | 'vault' | null) => void;
 }
 
 export const BuilderTab: React.FC<BuilderTabProps> = ({
@@ -43,6 +46,9 @@ export const BuilderTab: React.FC<BuilderTabProps> = ({
   onSaveKey,
   onAddLog,
   onRecordSpend,
+  onRunningChange,
+  onAssistantMessage,
+  onOpenSettings,
 }) => {
   const [promptInput, setPromptInput] = React.useState('');
   const [inlineKeyInput, setInlineKeyInput] = React.useState('');
@@ -84,6 +90,29 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
   React.useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isSubmitting]);
+
+  React.useEffect(() => {
+    onRunningChange?.(isSubmitting);
+  }, [isSubmitting, onRunningChange]);
+
+  React.useEffect(() => {
+    const lastAi = [...messages].reverse().find((m) => m.role === 'assistant');
+    onAssistantMessage?.(lastAi || null);
+  }, [messages, onAssistantMessage]);
+
+  React.useEffect(() => {
+    if (!activeProject) return;
+    api.loadChat(activeProject.id).then((saved) => {
+      if (saved && saved.length > 0) {
+        setMessages(saved);
+      }
+    });
+  }, [activeProject?.id]);
+
+  React.useEffect(() => {
+    if (!activeProject || messages.length <= 1) return;
+    api.saveChat(activeProject.id, messages);
+  }, [activeProject?.id, messages]);
 
   const handleInlineSaveKey = async () => {
     if (!inlineKeyInput.trim()) return;
@@ -254,7 +283,10 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => setShowInlineKeyForm(!showInlineKeyForm)}
+            onClick={() => {
+              if (onOpenSettings) onOpenSettings('key');
+              else setShowInlineKeyForm(!showInlineKeyForm);
+            }}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
               hasKey
                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'

@@ -49,6 +49,11 @@ export interface AttachmentComposerTrayProps {
   maxAttachments?: number;
   quickPrompts?: string[];
   className?: string;
+  /** Extra controls rendered next to the paperclip (e.g. a model picker). */
+  leftToolbar?: React.ReactNode;
+  submitLabel?: string;
+  textareaId?: string;
+  minRows?: number;
 }
 
 function getFileType(fileName: string): AttachedFile['type'] {
@@ -85,10 +90,14 @@ export const AttachmentComposerTray: React.FC<AttachmentComposerTrayProps> = ({
   onStop,
   isLoading = false,
   disabled = false,
-  placeholder = 'Ask LihForge to engineer a Roblox system, mechanics, or Luau script...',
+  placeholder = 'Describe what to build...',
   maxAttachments = 5,
   quickPrompts = [],
   className,
+  leftToolbar,
+  submitLabel = 'Send',
+  textareaId,
+  minRows,
 }) => {
   const [attachments, setAttachments] = React.useState<AttachedFile[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -243,7 +252,9 @@ export const AttachmentComposerTray: React.FC<AttachmentComposerTrayProps> = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          maxHeight={160}
+          id={textareaId}
+          rows={minRows}
+          maxHeight={200}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault();
@@ -268,9 +279,7 @@ export const AttachmentComposerTray: React.FC<AttachmentComposerTrayProps> = ({
             >
               <Paperclip className="h-4 w-4" />
             </InputGroupButton>
-            <span className="text-[11px] text-muted-foreground select-none pl-1 hidden sm:inline">
-              Shift + Enter for new line
-            </span>
+            {leftToolbar}
           </div>
 
           <div className="flex items-center gap-2">
@@ -292,7 +301,7 @@ export const AttachmentComposerTray: React.FC<AttachmentComposerTrayProps> = ({
                 onClick={handleSubmit}
                 title="Send message (Enter)"
               >
-                <span>Send</span>
+                <span>{submitLabel}</span>
                 <ArrowUp className="h-3.5 w-3.5" />
               </InputGroupButton>
             )}

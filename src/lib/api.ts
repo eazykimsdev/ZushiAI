@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
-import { AiChatResult, Project, RunHistoryRecord, UserSettings } from '../types';
-import { ProviderId, LiveModelInfo, PROVIDERS } from '../../providers/types';
+import { AiChatResult, ChatMessage, Project, RunHistoryRecord, UserSettings } from '../types';
+import { ProviderId, LiveModelInfo } from '../../providers/types';
 
 export interface TestKeyResult {
   success: boolean;
@@ -39,7 +39,7 @@ export function parseApiError(err: any, currentModel?: string): MappedApiError {
       code,
       humanMessage: human,
       rawError: raw,
-      suggestedReplacement: code === 404 ? 'deepseek/deepseek-chat' : undefined,
+      suggestedReplacement: undefined,
     };
   }
 
@@ -73,7 +73,7 @@ export function parseApiError(err: any, currentModel?: string): MappedApiError {
     code,
     humanMessage: human,
     rawError: message,
-    suggestedReplacement: is404 ? 'deepseek/deepseek-chat' : undefined,
+    suggestedReplacement: undefined,
   };
 }
 
@@ -218,9 +218,37 @@ export const api = {
       await invoke('save_setting', { key, value });
       return;
     }
-    const current = await this.getSettings();
-    (current as any)[key] = value;
-    localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(current));
+    let raw: Record<string, any> = {};
+    try {
+      raw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
+    } catch {
+      raw = {};
+    }
+    raw[key] = value;
+    localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(raw));
+  },
+
+  async loadChat(projectId: string): Promise<ChatMessage[]> {
+    try {
+      let raw: Record<string, any> = {};
+      if (isTauriEnvironment()) {
+        raw = await invoke<Record<string, string>>('get_settings');
+      } else {
+        raw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
+      }
+      const text = raw[`chat:${projectId}`];
+      return text ? (JSON.parse(text) as ChatMessage[]) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async saveChat(projectId: string, messages: ChatMessage[]): Promise<void> {
+    await this.saveSetting(`chat:${projectId}`, JSON.stringify(messages));
+  },
+
+  async deleteChat(projectId: string): Promise<void> {
+    await this.saveSetting(`chat:${projectId}`, '');
   },
 
   async saveApiKey(provider: ProviderId, apiKey: string): Promise<void> {
@@ -298,7 +326,16 @@ export const api = {
     }
   },
 
+  /** Live model list with a small in-memory cache so pricing lookups never re-hit the network. */
+  modelCache: {} as Partial<Record<ProviderId, LiveModelInfo[]>>,
+
   async fetchLiveModels(provider: ProviderId, customKey?: string): Promise<LiveModelInfo[]> {
+    const list = await this.fetchLiveModelsRaw(provider, customKey);
+    if (list.length > 0) this.modelCache[provider] = list;
+    return list;
+  },
+
+  async fetchLiveModelsRaw(provider: ProviderId, customKey?: string): Promise<LiveModelInfo[]> {
     if (isTauriEnvironment()) {
       try {
         return await invoke<LiveModelInfo[]>('fetch_provider_models', {
@@ -333,7 +370,7 @@ export const api = {
         }
       } else if (provider === 'gemini') {
         const key = customKey || localStorage.getItem(`zushi_key_${provider}`) || sessionStorage.getItem(`temp_key_${provider}`);
-        if (!key) return PROVIDERS.gemini.fallbackModels;
+        if (!key) return [];
         const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
         if (resp.ok) {
           const data = await resp.json();
@@ -343,8 +380,6 @@ export const api = {
               id: (m.name || '').replace('models/', ''),
               name: m.displayName || m.name,
               contextLength: m.inputTokenLimit,
-              costPerMillionInput: 0.15,
-              costPerMillionOutput: 0.60,
               description: m.description,
             }));
         }
@@ -353,7 +388,7 @@ export const api = {
       console.warn('Browser model fetch error', e);
     }
 
-    return PROVIDERS[provider]?.fallbackModels || [];
+    return [];
   },
 
   async testApiKey(
@@ -416,7 +451,7 @@ export const api = {
           const errText = await resp.text();
           const cleanErr = parseApiError(`HTTP_${resp.status}:OpenRouter error:${errText}`, model);
           const liveModels = await this.fetchLiveModels('openrouter', key).catch(() => undefined);
-          const suggested = resp.status === 404 ? liveModels?.[0]?.id || 'deepseek/deepseek-chat' : undefined;
+          const suggested = resp.status === 404 ? liveModels?.[0]?.id : undefined;
 
           return {
             success: false,

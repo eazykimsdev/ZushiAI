@@ -47,9 +47,7 @@ export const GravityBackground: React.FC<GravityBackgroundProps> = ({ enabled = 
     resize();
     window.addEventListener('resize', resize);
 
-    // Gravity well grid setup
-    const gridSpacing = 36;
-    let timeOffset = 0;
+    let time = 0;
 
     const render = (currentTime: number) => {
       animationFrameId = requestAnimationFrame(render);
@@ -60,60 +58,66 @@ export const GravityBackground: React.FC<GravityBackgroundProps> = ({ enabled = 
       if (delta < interval) return;
       lastTime = currentTime - (delta % interval);
 
-      timeOffset += 0.02;
+      time += 0.015;
 
       const w = canvas.width;
       const h = canvas.height;
 
       ctx.clearRect(0, 0, w, h);
 
-      // Top soft radial glow
-      const glowGrad = ctx.createRadialGradient(w / 2, 0, 10, w / 2, 0, Math.max(w * 0.6, 600));
-      glowGrad.addColorStop(0, 'rgba(109, 74, 224, 0.12)');
-      glowGrad.addColorStop(0.5, 'rgba(109, 74, 224, 0.04)');
-      glowGrad.addColorStop(1, 'rgba(14, 11, 20, 0)');
-      ctx.fillStyle = glowGrad;
+      // Deep void background
+      ctx.fillStyle = '#090710';
       ctx.fillRect(0, 0, w, h);
 
-      // Gravity center (around center-lower region where prompt box sits)
+      // 1. Top Fujitora Royal Violet Atmospheric Glow
+      const topGlow = ctx.createRadialGradient(w / 2, 0, 10, w / 2, 0, Math.max(w * 0.7, 700));
+      topGlow.addColorStop(0, 'rgba(124, 92, 252, 0.16)');
+      topGlow.addColorStop(0.35, 'rgba(91, 63, 209, 0.08)');
+      topGlow.addColorStop(0.7, 'rgba(30, 20, 55, 0.03)');
+      topGlow.addColorStop(1, 'rgba(9, 7, 16, 0)');
+      ctx.fillStyle = topGlow;
+      ctx.fillRect(0, 0, w, h);
+
+      // 2. Central Gravity Well Aura behind Composer
       const wellX = w / 2;
-      const wellY = h * 0.52;
-      const wellRadius = Math.min(w, h) * 0.45;
+      const wellY = h * 0.46;
+      const pulse = Math.sin(time) * 15;
+      const coreRadius = Math.min(w, h) * 0.38 + pulse;
 
-      const cols = Math.ceil(w / gridSpacing) + 2;
-      const rows = Math.ceil(h / gridSpacing) + 2;
+      const wellGlow = ctx.createRadialGradient(wellX, wellY, 10, wellX, wellY, coreRadius);
+      wellGlow.addColorStop(0, 'rgba(139, 92, 246, 0.14)');
+      wellGlow.addColorStop(0.3, 'rgba(109, 74, 224, 0.08)');
+      wellGlow.addColorStop(0.65, 'rgba(76, 29, 149, 0.03)');
+      wellGlow.addColorStop(1, 'rgba(9, 7, 16, 0)');
+      ctx.fillStyle = wellGlow;
+      ctx.beginPath();
+      ctx.arc(wellX, wellY, coreRadius, 0, Math.PI * 2);
+      ctx.fill();
 
-      ctx.fillStyle = 'rgba(167, 139, 250, 0.15)';
+      // 3. Subtle Ethereal Gravity Lens Rings (Soft, smooth lines, NO DOTS)
+      const ringRadii = [
+        coreRadius * 0.45 + Math.sin(time * 0.8) * 8,
+        coreRadius * 0.75 + Math.cos(time * 0.7) * 12,
+        coreRadius * 1.1 + Math.sin(time * 0.6) * 16,
+        coreRadius * 1.45 + Math.cos(time * 0.5) * 20,
+      ];
 
-      for (let i = -1; i <= cols; i++) {
-        for (let j = -1; j <= rows; j++) {
-          const baseX = i * gridSpacing;
-          const baseY = j * gridSpacing;
+      ringRadii.forEach((r, idx) => {
+        if (r <= 0) return;
+        const ringAlpha = Math.max(0, 0.04 - idx * 0.008 + Math.sin(time + idx) * 0.012);
+        ctx.strokeStyle = `rgba(196, 181, 253, ${ringAlpha.toFixed(4)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(wellX, wellY, r, 0, Math.PI * 2);
+        ctx.stroke();
+      });
 
-          const dx = wellX - baseX;
-          const dy = wellY - baseY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          let drawX = baseX;
-          let drawY = baseY;
-          let dotAlpha = 0.12;
-
-          if (dist < wellRadius && dist > 1) {
-            // Subtle gravity pull toward center
-            const factor = Math.pow((wellRadius - dist) / wellRadius, 2);
-            const pull = factor * 14;
-            const breathing = Math.sin(timeOffset + dist * 0.015) * 2;
-            drawX += (dx / dist) * (pull + breathing);
-            drawY += (dy / dist) * (pull + breathing);
-            dotAlpha = 0.12 + factor * 0.18;
-          }
-
-          ctx.fillStyle = `rgba(167, 139, 250, ${dotAlpha.toFixed(3)})`;
-          ctx.beginPath();
-          ctx.arc(drawX, drawY, 1.15, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
+      // 4. Subtle bottom atmospheric vignetting
+      const bottomGlow = ctx.createLinearGradient(0, h - 180, 0, h);
+      bottomGlow.addColorStop(0, 'rgba(9, 7, 16, 0)');
+      bottomGlow.addColorStop(1, 'rgba(9, 7, 16, 0.6)');
+      ctx.fillStyle = bottomGlow;
+      ctx.fillRect(0, h - 180, w, 180);
     };
 
     animationFrameId = requestAnimationFrame(render);
@@ -132,7 +136,7 @@ export const GravityBackground: React.FC<GravityBackgroundProps> = ({ enabled = 
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ background: 'var(--background)' }}
+      style={{ background: '#090710' }}
     />
   );
 };

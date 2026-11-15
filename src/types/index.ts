@@ -35,6 +35,8 @@ export interface StatusLights {
   keyConnected: boolean;
   studioConnected: boolean;
   vaultLoaded: boolean;
+  vaultNotes?: number;
+  keyDetail?: string;
 }
 
 export type AgentStatus =
