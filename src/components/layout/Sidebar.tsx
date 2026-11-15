@@ -196,14 +196,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           onClick={onOpenProfile}
           title={hasServer ? settings.serverName : 'Set up Roblox Project'}
           className={cn(
-            'w-full flex items-center gap-3 rounded-[12px] border border-white/[0.08] bg-white/[0.03] hover:border-purple-400/30 hover:bg-white/[0.06] backdrop-blur-md transition-all duration-150 cursor-pointer text-left',
+            'w-full flex items-center gap-3 rounded-[12px] border border-white/[0.08] bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06] transition-colors duration-150 cursor-pointer text-left',
             collapsed ? 'p-1.5 justify-center' : 'p-2.5'
           )}
         >
           {hasServer || settings.serverIcon ? (
             <Avatar src={settings.serverIcon} name={settings.serverName} size={40} rounded="xl" />
           ) : (
-            <div className="h-10 w-10 shrink-0 rounded-[12px] border border-dashed border-white/20 flex items-center justify-center text-white/70 bg-purple-500/10">
+            <div className="h-10 w-10 shrink-0 rounded-[12px] border border-dashed border-white/15 flex items-center justify-center text-white/60 bg-white/[0.02]">
               <Plus className="h-4 w-4" />
             </div>
           )}
@@ -255,122 +255,125 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       {/* Navigation */}
-      <nav className={cn('flex-1 min-h-0 overflow-y-auto px-3 pb-3', collapsed && 'px-2.5 pt-2')}>
-        {!collapsed && <SectionLabel>Workspace</SectionLabel>}
-        <div className="space-y-0.5">
-          <NavButton
-            icon={<Home className="h-[18px] w-[18px]" />}
-            label="Home"
-            active={activeTab === 'home'}
-            collapsed={collapsed}
-            onClick={() => onNavigate('home')}
-          />
-          <NavButton
-            icon={<Plus className="h-[18px] w-[18px]" />}
-            label="New build"
-            collapsed={collapsed}
-            onClick={onNewBuild}
-          />
-          {activeProject && (
+      <nav className={cn('flex-1 min-h-0 flex flex-col justify-between px-3 pb-3 overflow-hidden', collapsed && 'px-2.5 pt-2')}>
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-0.5 pr-0.5">
+          {!collapsed && <SectionLabel>Workspace</SectionLabel>}
+          <div className="space-y-0.5">
             <NavButton
-              icon={<Hammer className="h-[18px] w-[18px]" />}
-              label="Current build"
-              active={activeTab === 'build'}
+              icon={<Home className="h-[18px] w-[18px]" />}
+              label="Home"
+              active={activeTab === 'home'}
               collapsed={collapsed}
-              trailing={isRunning ? <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> : undefined}
-              onClick={() => onNavigate('build')}
+              onClick={() => onNavigate('home')}
             />
+            <NavButton
+              icon={<Plus className="h-[18px] w-[18px]" />}
+              label="New build"
+              collapsed={collapsed}
+              onClick={onNewBuild}
+            />
+            {activeProject && (
+              <NavButton
+                icon={<Hammer className="h-[18px] w-[18px]" />}
+                label="Current build"
+                active={activeTab === 'build'}
+                collapsed={collapsed}
+                trailing={isRunning ? <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> : undefined}
+                onClick={() => onNavigate('build')}
+              />
+            )}
+          </div>
+
+          {!collapsed && (
+            <>
+              <SectionLabel>Recent builds</SectionLabel>
+              {recent.length === 0 ? (
+                <p className="px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
+                  {query ? 'No builds match that search.' : 'Your builds will show up here once you start one.'}
+                </p>
+              ) : (
+                <div className="space-y-0.5">
+                  {recent.map((p) => {
+                    const active = activeProject?.id === p.id && activeTab === 'build';
+                    if (editingId === p.id) {
+                      return (
+                        <form
+                          key={p.id}
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            commitRename(p.id);
+                          }}
+                          className="flex items-center gap-1 px-1"
+                        >
+                          <input
+                            autoFocus
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Escape' && setEditingId(null)}
+                            className="flex-1 min-w-0 h-8 rounded-[8px] bg-surface-1 border border-primary px-2 text-[13px] focus:outline-none"
+                          />
+                          <button type="submit" className="p-1.5 rounded-md text-success hover:bg-surface-1 cursor-pointer" aria-label="Save name">
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                          <button type="button" onClick={() => setEditingId(null)} className="p-1.5 rounded-md text-muted-foreground hover:bg-surface-1 cursor-pointer" aria-label="Cancel">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </form>
+                      );
+                    }
+                    return (
+                      <div
+                        key={p.id}
+                        className={cn(
+                          'group relative flex items-center rounded-[10px] border transition-colors duration-150',
+                          active ? 'bg-surface-1 border-border-hover' : 'border-transparent hover:bg-surface-1/70'
+                        )}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onSelectProject(p)}
+                          className="flex-1 min-w-0 h-9 flex items-center gap-3 px-3 text-left cursor-pointer"
+                        >
+                          <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', active ? 'bg-primary' : 'bg-muted-foreground/40')} />
+                          <span className={cn('truncate text-[13px]', active ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground')}>
+                            {p.name}
+                          </span>
+                        </button>
+                        <div className="hidden group-hover:flex items-center pr-1.5 gap-0.5">
+                          <button
+                            type="button"
+                            aria-label="Rename build"
+                            title="Rename"
+                            onClick={() => {
+                              setEditingId(p.id);
+                              setEditName(p.name);
+                            }}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-2 cursor-pointer"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            aria-label="Delete build"
+                            title="Delete"
+                            onClick={() => onDeleteProject(p.id)}
+                            className="p-1.5 rounded-md text-muted-foreground hover:text-error hover:bg-surface-2 cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
 
-        {!collapsed && (
-          <>
-            <SectionLabel>Recent builds</SectionLabel>
-            {recent.length === 0 ? (
-              <p className="px-3 py-2 text-[12px] leading-relaxed text-muted-foreground">
-                {query ? 'No builds match that search.' : 'Your builds will show up here once you start one.'}
-              </p>
-            ) : (
-              <div className="space-y-0.5">
-                {recent.map((p) => {
-                  const active = activeProject?.id === p.id && activeTab === 'build';
-                  if (editingId === p.id) {
-                    return (
-                      <form
-                        key={p.id}
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          commitRename(p.id);
-                        }}
-                        className="flex items-center gap-1 px-1"
-                      >
-                        <input
-                          autoFocus
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Escape' && setEditingId(null)}
-                          className="flex-1 min-w-0 h-8 rounded-[8px] bg-surface-1 border border-primary px-2 text-[13px] focus:outline-none"
-                        />
-                        <button type="submit" className="p-1.5 rounded-md text-success hover:bg-surface-1 cursor-pointer" aria-label="Save name">
-                          <Check className="h-3.5 w-3.5" />
-                        </button>
-                        <button type="button" onClick={() => setEditingId(null)} className="p-1.5 rounded-md text-muted-foreground hover:bg-surface-1 cursor-pointer" aria-label="Cancel">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </form>
-                    );
-                  }
-                  return (
-                    <div
-                      key={p.id}
-                      className={cn(
-                        'group relative flex items-center rounded-[10px] border transition-colors duration-150',
-                        active ? 'bg-surface-1 border-border-hover' : 'border-transparent hover:bg-surface-1/70'
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => onSelectProject(p)}
-                        className="flex-1 min-w-0 h-9 flex items-center gap-3 px-3 text-left cursor-pointer"
-                      >
-                        <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', active ? 'bg-primary' : 'bg-muted-foreground/40')} />
-                        <span className={cn('truncate text-[13px]', active ? 'text-foreground font-medium' : 'text-muted-foreground group-hover:text-foreground')}>
-                          {p.name}
-                        </span>
-                      </button>
-                      <div className="hidden group-hover:flex items-center pr-1.5 gap-0.5">
-                        <button
-                          type="button"
-                          aria-label="Rename build"
-                          title="Rename"
-                          onClick={() => {
-                            setEditingId(p.id);
-                            setEditName(p.name);
-                          }}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface-2 cursor-pointer"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          aria-label="Delete build"
-                          title="Delete"
-                          onClick={() => onDeleteProject(p.id)}
-                          className="p-1.5 rounded-md text-muted-foreground hover:text-error hover:bg-surface-2 cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
-
-        {!collapsed && <SectionLabel>System</SectionLabel>}
-        <div className="space-y-0.5">
+        {/* System & Settings pinned lower down */}
+        <div className="pt-2 mt-auto border-t border-white/[0.06] shrink-0 space-y-0.5">
+          {!collapsed && <SectionLabel>System</SectionLabel>}
           <NavButton
             icon={<Settings className="h-[18px] w-[18px]" />}
             label="Settings"

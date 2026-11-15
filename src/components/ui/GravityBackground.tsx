@@ -85,34 +85,16 @@ export const GravityBackground: React.FC<GravityBackgroundProps> = ({ enabled = 
       const coreRadius = Math.min(w, h) * 0.38 + pulse;
 
       const wellGlow = ctx.createRadialGradient(wellX, wellY, 10, wellX, wellY, coreRadius);
-      wellGlow.addColorStop(0, 'rgba(139, 92, 246, 0.14)');
-      wellGlow.addColorStop(0.3, 'rgba(109, 74, 224, 0.08)');
-      wellGlow.addColorStop(0.65, 'rgba(76, 29, 149, 0.03)');
+      wellGlow.addColorStop(0, 'rgba(139, 92, 246, 0.12)');
+      wellGlow.addColorStop(0.35, 'rgba(109, 74, 224, 0.06)');
+      wellGlow.addColorStop(0.7, 'rgba(76, 29, 149, 0.02)');
       wellGlow.addColorStop(1, 'rgba(9, 7, 16, 0)');
       ctx.fillStyle = wellGlow;
       ctx.beginPath();
       ctx.arc(wellX, wellY, coreRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // 3. Subtle Ethereal Gravity Lens Rings (Soft, smooth lines, NO DOTS)
-      const ringRadii = [
-        coreRadius * 0.45 + Math.sin(time * 0.8) * 8,
-        coreRadius * 0.75 + Math.cos(time * 0.7) * 12,
-        coreRadius * 1.1 + Math.sin(time * 0.6) * 16,
-        coreRadius * 1.45 + Math.cos(time * 0.5) * 20,
-      ];
-
-      ringRadii.forEach((r, idx) => {
-        if (r <= 0) return;
-        const ringAlpha = Math.max(0, 0.04 - idx * 0.008 + Math.sin(time + idx) * 0.012);
-        ctx.strokeStyle = `rgba(196, 181, 253, ${ringAlpha.toFixed(4)})`;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(wellX, wellY, r, 0, Math.PI * 2);
-        ctx.stroke();
-      });
-
-      // 4. Subtle bottom atmospheric vignetting
+      // 3. Subtle bottom atmospheric vignetting
       const bottomGlow = ctx.createLinearGradient(0, h - 180, 0, h);
       bottomGlow.addColorStop(0, 'rgba(9, 7, 16, 0)');
       bottomGlow.addColorStop(1, 'rgba(9, 7, 16, 0.6)');
