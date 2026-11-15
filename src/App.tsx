@@ -6,6 +6,7 @@ import { ProcessDrawer } from './components/layout/ProcessDrawer';
 import { HomeTab } from './components/tabs/HomeTab';
 import { BuilderTab } from './components/tabs/BuilderTab';
 import { SettingsTab } from './components/tabs/SettingsTab';
+import { GravityBackground } from './components/ui/GravityBackground';
 import { ProjectModal } from './components/projects/ProjectModal';
 import {
   AgentActionState,
@@ -255,7 +256,8 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-background text-foreground font-sans overflow-hidden select-none">
+    <div className={`flex flex-col h-screen w-screen bg-background text-foreground font-sans overflow-hidden select-none relative ${settings.theme === 'light' ? 'light' : ''}`}>
+      <GravityBackground enabled={settings.backgroundEffect !== false} />
       {/* Top Bar */}
       <TopBar
         activeTab={activeTab}

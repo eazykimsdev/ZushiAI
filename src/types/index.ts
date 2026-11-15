@@ -22,6 +22,8 @@ export interface UserSettings {
   currentMonthSpend: number;
   currentSessionSpend: number;
   vaultPath: string;
+  theme?: 'dark' | 'light';
+  backgroundEffect?: boolean;
 }
 
 export interface StatusLights {

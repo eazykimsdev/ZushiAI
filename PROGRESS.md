@@ -45,7 +45,21 @@ ZushiAI is an AI Roblox game builder desktop application (BYOK, Studio bridge, b
 
 ---
 
-### Task 2: Brand + Design System ⏳ PENDING
+### Task 2: Brand + Design System ✅ COMPLETED
+- **ZushiAI Design Tokens**:
+  - Dark Theme (Default): `#0E0B14` (background), `#15111F` (surface-1), `#1C1729` (surface-2), `rgba(255,255,255,0.08)` (border), `#EDE9F5` (foreground), `#9A93AD` (muted-foreground), `#6D4AE0` (primary violet), `#A78BFA` (accent text), `#5BD08A` (success), `#F0647A` (error), `#E5B25D` (warning).
+  - Light Theme Toggle: `#F6F3EE` (background), `#FFFFFF` (surface), `#1F1B2E` (foreground), `#5B3FD1` (primary), with high-contrast semantic tokens.
+  - Violet is the single brand color; green/red/amber are reserved strictly for true state indications.
+- **Local Fontsource Typography (Zero CDN)**:
+  - Serif headline font: `@fontsource/fraunces` for calm serif headlines ("What are we building?").
+  - UI font: `@fontsource/inter` (14px base, 12-13px secondary) with sentence case throughout.
+  - Code/Terminal/Numbers font: `@fontsource/jetbrains-mono`.
+- **Canvas Gravity-Well Background**:
+  - Created `GravityBackground.tsx`: HTML5 canvas rendering a top soft radial glow (`rgba(109, 74, 224, 0.12)`) and a subtle dot-grid curving gently toward the prompt center like a gravity well.
+  - Capped strictly at 30fps. Automatically pauses on window blur/hidden and when `prefers-reduced-motion` is active. Toggleable in Settings.
+
+---
+
 ### Task 3: Layout ⏳ PENDING
 ### Task 4: Components & Live Wiring ⏳ PENDING
 ### Task 5: One-Prompt Build Flow ⏳ PENDING
