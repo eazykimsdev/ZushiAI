@@ -301,14 +301,15 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
       )}
 
       {/* Main Chat Conversation Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {messages.map((msg) => {
-          const isUser = msg.role === 'user';
-          return (
-            <div
-              key={msg.id}
-              className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
-            >
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="max-w-[720px] mx-auto w-full space-y-6">
+          {messages.map((msg) => {
+            const isUser = msg.role === 'user';
+            return (
+              <div
+                key={msg.id}
+                className={`flex items-start gap-3 ${isUser ? 'flex-row-reverse' : ''}`}
+              >
               {/* Avatar */}
               <div
                 className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 border ${
@@ -432,30 +433,33 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
           </div>
         )}
 
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
       {/* Pinned Bottom Composer with Removable Attachment Tray */}
-      <div className="p-3 border-t border-border bg-card/40">
-        <AttachmentComposerTray
-          value={promptInput}
-          onChange={setPromptInput}
-          onSubmit={(text, attachments) => handleSendPrompt(text, attachments)}
-          onStop={handleStop}
-          isLoading={isSubmitting}
-          disabled={!hasKey && !inlineKeyInput.trim()}
-          placeholder={
-            hasKey
-              ? 'Describe what Roblox system, mechanics, or Luau script to engineer... (Enter to send)'
-              : 'Connect your API key above to start building...'
-          }
-          quickPrompts={[
-            'Pet Hatching System with 3 egg rarities & luck multipliers',
-            'Leaderboard DataStore service with anti-spam remotes',
-            'Combat Raycast hitbox with hit-stop & VFX',
-            'Simulator Shop UI with Robux dev products',
-          ]}
-        />
+      <div className="p-3 border-t border-border bg-surface-1/40">
+        <div className="max-w-[720px] mx-auto w-full">
+          <AttachmentComposerTray
+            value={promptInput}
+            onChange={setPromptInput}
+            onSubmit={(text, attachments) => handleSendPrompt(text, attachments)}
+            onStop={handleStop}
+            isLoading={isSubmitting}
+            disabled={!hasKey && !inlineKeyInput.trim()}
+            placeholder={
+              hasKey
+                ? 'Describe what Roblox system, mechanics, or Luau script to engineer... (Enter to send)'
+                : 'Connect your API key above to start building...'
+            }
+            quickPrompts={[
+              'Pet Hatching System with 3 egg rarities & luck multipliers',
+              'Leaderboard DataStore service with anti-spam remotes',
+              'Combat Raycast hitbox with hit-stop & VFX',
+              'Simulator Shop UI with Robux dev products',
+            ]}
+          />
+        </div>
       </div>
     </div>
   );

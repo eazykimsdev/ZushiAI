@@ -60,6 +60,27 @@ ZushiAI is an AI Roblox game builder desktop application (BYOK, Studio bridge, b
 
 ---
 
-### Task 3: Layout ⏳ PENDING
+### Task 3: Layout ✅ COMPLETED
+- **Collapsible Sidebar (~260px)**:
+  - Logo + "ZushiAI" header, "New build" primary button, searchable build list, real SQLite projects with inline rename & delete actions.
+  - Bottom status rows: Key (opens Settings), Studio (verify status), Vault (1,333 verified notes measured on disk), and Settings button.
+- **Claude-Style Home View (`HomeTab.tsx`)**:
+  - Centered calm Fraunces serif headline *"What are we building?"* with clear subtitle.
+  - Big composer with removable attachment tray.
+  - 5 quiet inspiration chips (Pet simulator, Sword combat, Obby checkpoints, Tycoon droppers, Shop UI).
+  - First-run 3-step checklist (Add key, Connect Studio, Load vault) that automatically hides once all 3 are connected.
+- **Focused Build View (`BuilderTab.tsx`)**:
+  - Centered transcript constrained to `max-w-[720px]` for high readability.
+  - Bottom pinned composer inside the `max-w-[720px]` column.
+  - Dedicated collapsible right **Build** panel (~320px) showing:
+    - 5-8 step plan checklist with ticking status indicators
+    - Live step status
+    - Changed files & remotes in session (clickable to inspect script preview)
+    - Studio bridge status card (port 4243 localhost loopback)
+    - Session spend & token progress bar
+- **Collapsed Process Drawer**: Bottom drawer remains collapsed by default to maximize vertical canvas space.
+
+---
+
 ### Task 4: Components & Live Wiring ⏳ PENDING
 ### Task 5: One-Prompt Build Flow ⏳ PENDING

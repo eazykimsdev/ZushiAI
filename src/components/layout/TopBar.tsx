@@ -66,11 +66,16 @@ export const TopBar: React.FC<TopBarProps> = ({
       {/* Left: Brand + Project Selector */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
-            L
-          </div>
+          <img
+            src="/logo.png"
+            alt="ZushiAI"
+            className="h-5 w-5 rounded object-contain shrink-0"
+            onError={(e) => {
+              (e.target as HTMLElement).style.display = 'none';
+            }}
+          />
           <span className="font-semibold text-sm tracking-tight text-foreground">
-            LihForge
+            ZushiAI
           </span>
           <span className="text-[11px] text-muted-foreground font-mono">
             v0.1.0

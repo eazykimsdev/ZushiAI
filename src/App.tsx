@@ -24,6 +24,7 @@ import { ProviderId } from '../providers/types';
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('home');
   const [pendingPrompt, setPendingPrompt] = useState<{ text: string; attachments?: any[] } | null>(null);
+  const [isBuildPanelCollapsed, setIsBuildPanelCollapsed] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
@@ -362,27 +363,18 @@ export const App: React.FC = () => {
           )}
         </main>
 
-        {/* Right Status Readout & Scoreboard Panel */}
-        <RightPanel
-          actionState={actionState}
-          scoreboard={scoreboard}
-          runHistory={runHistory}
-          onStartAgent={() => {
-            if (activeTab !== 'build') setActiveTab('build');
-          }}
-          onPauseAgent={() => {
-            setActionState((prev) => ({
-              ...prev,
-              status: prev.status === 'paused' ? 'executing' : 'paused',
-            }));
-            addLog(
-              actionState.status === 'paused' ? 'Resumed agent execution.' : 'Paused agent.',
-              'info'
-            );
-          }}
-          onStopAgent={handleStopPrompt}
-          monthlyLimit={settings.monthlyBudgetLimit}
-        />
+        {/* Right Build Plan & Status Panel (Visible in Build tab) */}
+        {activeTab === 'build' && (
+          <RightPanel
+            actionState={actionState}
+            statusLights={statusLights}
+            scoreboard={scoreboard}
+            runHistory={runHistory}
+            collapsed={isBuildPanelCollapsed}
+            onToggleCollapse={() => setIsBuildPanelCollapsed(!isBuildPanelCollapsed)}
+            monthlyLimit={settings.monthlyBudgetLimit}
+          />
+        )}
       </div>
 
       {/* Bottom Process Log Drawer */}
