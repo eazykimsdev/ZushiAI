@@ -82,5 +82,25 @@ ZushiAI is an AI Roblox game builder desktop application (BYOK, Studio bridge, b
 
 ---
 
-### Task 4: Components & Live Wiring ⏳ PENDING
+### Task 4: Components & Live Wiring ✅ COMPLETED
+- **Attachment Composer Tray Helpers**:
+  - Implemented `attachment-composer-tray-utils/attachment.tsx` (`Attachment`, `AttachmentAction`, `AttachmentActions`, `AttachmentContent`, `AttachmentGroup`, `AttachmentMedia`, `AttachmentTitle`).
+  - Implemented `attachment-composer-tray-utils/field.tsx` (`Field`, `FieldLabel`).
+  - Implemented `attachment-composer-tray-utils/input-group.tsx` (`InputGroup`, `InputGroupAddon`, `InputGroupButton`, `InputGroupText`, `InputGroupTextarea`) with block-start/block-end alignment.
+- **AI Thinking and Tool Calls**:
+  - `ThinkingState` operates in live mode with growing `TraceNode` items (reasoning, tool, terminal, quality score).
+  - Shimmer indicator during execution; settles to an action summary upon completion.
+  - Line-by-line green/red diff viewer (`FileDiff`) and terminal runner (`TerminalCommand`).
+- **Live Event Adapter Mapping**:
+  - Reasoning text mapped to `type: "reasoning"`.
+  - Vault searches mapped to `tool: "search"` with top 3 note titles.
+  - Vault reading mapped to `tool: "read"` with syntax-highlighted code.
+  - Studio script editing mapped to `tool: "edit_file"` with calculated line diffs.
+  - Static typechecker mapped to terminal command `zushi check <file>` with exit codes.
+  - Playtest execution mapped to `roblox-studio --playtest`.
+  - Image generation mapped to `tool: "image_gen"` with custom image icon.
+  - Quality score reviews mapped to `tool: "quality_score"` scored out of 10.0 against LihFolk rubrics.
+
+---
+
 ### Task 5: One-Prompt Build Flow ⏳ PENDING

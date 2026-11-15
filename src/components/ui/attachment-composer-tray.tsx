@@ -19,15 +19,15 @@ import {
   AttachmentGroup,
   AttachmentMedia,
   AttachmentTitle,
-} from './attachment';
+} from './attachment-composer-tray-utils/attachment';
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupText,
   InputGroupTextarea,
-} from './input-group';
-import { Field } from './field';
+} from './attachment-composer-tray-utils/input-group';
+import { Field } from './attachment-composer-tray-utils/field';
 
 export interface AttachedFile {
   id: string;
