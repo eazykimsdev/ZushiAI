@@ -1,0 +1,33 @@
+[package]
+name = "lihforge"
+version = "0.1.0"
+description = "LihForge - AI Roblox Game Builder"
+authors = ["LihForge Team"]
+edition = "2024"
+
+[lib]
+name = "lihforge_lib"
+crate-type = ["staticlib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+rusqlite = { version = "0.33", features = ["bundled"] }
+keyring = "3"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+reqwest = { version = "0.12", features = ["json"] }
+base64 = "0.22"
+dirs = "6"
+
+[profile.release]
+codegen-units = 16
+lto = false
+opt-level = 2
+panic = "abort"
+strip = true
