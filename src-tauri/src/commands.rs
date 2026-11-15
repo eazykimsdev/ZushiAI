@@ -88,6 +88,23 @@ pub fn delete_api_key(provider: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub async fn fetch_provider_models(
+    provider: String,
+    custom_key: Option<String>,
+) -> Result<Vec<crate::ai_test::LiveModelInfo>, String> {
+    let key = if let Some(k) = custom_key {
+        if !k.trim().is_empty() {
+            Some(k)
+        } else {
+            None
+        }
+    } else {
+        keychain::get_api_key(&provider).ok().flatten()
+    };
+    crate::ai_test::fetch_models_for_provider(&provider, key.as_deref()).await
+}
+
+#[tauri::command]
 pub async fn test_api_key(
     provider: String,
     model: String,

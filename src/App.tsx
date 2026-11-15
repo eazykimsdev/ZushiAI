@@ -320,6 +320,7 @@ export const App: React.FC = () => {
               actionState={actionState}
               onRunPrompt={() => {}}
               onStopPrompt={handleStopPrompt}
+              onUpdateSettings={handleUpdateSettings}
               hasKey={statusLights.keyConnected}
               onSaveKey={handleSaveApiKey}
               onAddLog={addLog}

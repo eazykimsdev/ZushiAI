@@ -86,7 +86,15 @@ pub async fn execute_ai_chat(
 
             if !status.is_success() {
                 let err_text = resp.text().await.unwrap_or_default();
-                return Err(format!("OpenRouter error (HTTP {}): {}", status.as_u16(), err_text));
+                let status_code = status.as_u16();
+                let human_msg = match status_code {
+                    401 => "Key rejected by OpenRouter. Please verify your API key.".to_string(),
+                    402 => "Insufficient credits on OpenRouter. Please add funds.".to_string(),
+                    404 => format!("This model ('{}') is no longer available. Pick another.", model),
+                    429 => "Rate limit reached on OpenRouter. Please retry shortly.".to_string(),
+                    _ => format!("OpenRouter error (HTTP {}): {}", status_code, clean_error_message(&err_text)),
+                };
+                return Err(format!("HTTP_{}:{}:{}", status_code, human_msg, err_text));
             }
 
             let body: serde_json::Value = resp
@@ -157,7 +165,19 @@ pub async fn execute_ai_chat(
 
             if !status.is_success() {
                 let err_text = resp.text().await.unwrap_or_default();
-                return Err(format!("Google Gemini error (HTTP {}): {}", status.as_u16(), err_text));
+                let status_code = status.as_u16();
+                let is_key_err = status_code == 400 && (err_text.contains("API_KEY_INVALID") || err_text.contains("key not valid") || err_text.contains("INVALID_ARGUMENT"));
+                let human_msg = if is_key_err || status_code == 401 || status_code == 403 {
+                    "Key rejected by Google Gemini. Please check your API key.".to_string()
+                } else if status_code == 404 {
+                    format!("This model ('{}') is no longer available. Pick another.", clean_model)
+                } else if status_code == 429 {
+                    "Rate limit reached on Google Gemini. Please retry shortly.".to_string()
+                } else {
+                    format!("Google Gemini error (HTTP {}): {}", status_code, clean_error_message(&err_text))
+                };
+                let effective_code = if is_key_err { 401 } else { status_code };
+                return Err(format!("HTTP_{}:{}:{}", effective_code, human_msg, err_text));
             }
 
             let body: serde_json::Value = resp
@@ -321,10 +341,27 @@ fn calculate_cost(model: &str, input_tokens: i64, output_tokens: i64) -> f64 {
         m if m.contains("pro") => (1.25, 5.00),
         m if m.contains("gpt-4o-mini") => (0.15, 0.60),
         m if m.contains("gpt-4o") => (2.50, 10.00),
-        _ => (0.50, 2.00),
+        _ => (1.00, 3.00),
     };
 
-    let cost_in = (input_tokens as f64 / 1_000_000.0) * rate_in;
-    let cost_out = (output_tokens as f64 / 1_000_000.0) * rate_out;
-    cost_in + cost_out
+    let in_cost = (input_tokens as f64 / 1_000_000.0) * rate_in;
+    let out_cost = (output_tokens as f64 / 1_000_000.0) * rate_out;
+    ((in_cost + out_cost) * 100_000.0).round() / 100_000.0
+}
+
+fn clean_error_message(raw: &str) -> String {
+    if let Ok(val) = serde_json::from_str::<serde_json::Value>(raw) {
+        if let Some(msg) = val["error"]["message"].as_str() {
+            return msg.to_string();
+        }
+        if let Some(msg) = val["message"].as_str() {
+            return msg.to_string();
+        }
+    }
+    let truncated = if raw.len() > 180 {
+        &raw[..180]
+    } else {
+        raw
+    };
+    truncated.replace(['\r', '\n'], " ")
 }

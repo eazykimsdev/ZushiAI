@@ -31,6 +31,7 @@ pub fn run() {
             commands::save_api_key,
             commands::has_api_key,
             commands::delete_api_key,
+            commands::fetch_provider_models,
             commands::test_api_key,
             commands::run_ai_chat,
             commands::get_run_history,

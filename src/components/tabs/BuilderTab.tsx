@@ -7,12 +7,14 @@ import {
   Image as ImageIcon,
   FileText,
   File,
+  AlertCircle,
 } from 'lucide-react';
 import { AgentActionState, ChatMessage, Project, UserSettings } from '../../types';
 import { PROVIDERS, ProviderId } from '../../../providers/types';
 import { AttachmentComposerTray, AttachedFile } from '../ui/attachment-composer-tray';
 import { ThinkingState, Markdown, TraceNode } from '../ui/ai-thinking-and-tool-calls';
 import { runLiveAgentTurn } from '../../lib/agentEvents';
+import { api } from '../../lib/api';
 
 interface BuilderTabProps {
   activeProject: Project | null;
@@ -20,6 +22,7 @@ interface BuilderTabProps {
   actionState: AgentActionState;
   onRunPrompt: (prompt: string) => void;
   onStopPrompt: () => void;
+  onUpdateSettings?: (newSettings: Partial<UserSettings>) => void;
   hasKey: boolean;
   onSaveKey: (provider: ProviderId, key: string) => Promise<void>;
   onAddLog: (message: string, level?: 'info' | 'warn' | 'error' | 'success' | 'cmd', badge?: string) => void;
@@ -31,6 +34,7 @@ export const BuilderTab: React.FC<BuilderTabProps> = ({
   settings,
   actionState,
   hasKey,
+  onUpdateSettings,
   onSaveKey,
   onAddLog,
   onRecordSpend,
@@ -39,6 +43,11 @@ export const BuilderTab: React.FC<BuilderTabProps> = ({
   const [inlineKeyInput, setInlineKeyInput] = React.useState('');
   const [showInlineKeyForm, setShowInlineKeyForm] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [model404State, setModel404State] = React.useState<{
+    userPrompt: string;
+    attachments: AttachedFile[];
+    suggestedModel: string;
+  } | null>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
 
   // Chat message thread
@@ -171,13 +180,27 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
             'AI'
           );
         },
-        onError: (err) => {
+        onError: (err: any) => {
+          const is404 = Boolean(err.isModel404);
+          const suggested = err.suggestedReplacement || 'deepseek/deepseek-chat';
+          
+          if (is404) {
+            setModel404State({
+              userPrompt,
+              attachments,
+              suggestedModel: suggested,
+            });
+          }
+
+          const rawError = err.rawError ? `\n\n<details><summary>Details</summary>\n\n\`\`\`json\n${err.rawError}\n\`\`\`\n</details>` : '';
+          const errorMsg = err.humanMessage || err.message || 'Unknown agent execution failure';
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessageId
                 ? {
                     ...m,
-                    content: `⚠️ **Agent Execution Error**\n\n${err.message}\n\n*Check your API key in Settings or click "Connect Key" above.*`,
+                    content: `⚠️ **${is404 ? 'Model Retired / Unavailable' : 'Agent Execution Issue'}**\n\n${errorMsg}${rawError}`,
                     isThinkingRunning: false,
                   }
                 : m
@@ -185,7 +208,7 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
           );
           setIsSubmitting(false);
           abortControllerRef.current = null;
-          onAddLog(`Agent error: ${err.message}`, 'error', 'AI');
+          onAddLog(`Agent error: ${errorMsg}`, 'error', 'AI');
         },
       },
       abortController.signal
@@ -357,6 +380,46 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
             </div>
           );
         })}
+
+        {model404State && (
+          <div className="surface-card p-4 border border-rose-500/30 bg-rose-500/10 rounded-[10px] space-y-3">
+            <div className="flex items-center gap-2 text-rose-300 font-medium text-xs">
+              <AlertCircle className="h-4 w-4" />
+              <span>Model Retired — Replacement Suggestion</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              The model <code className="text-foreground font-mono">{settings.activeModel}</code> is no longer available from the provider.
+              Would you like to switch to <strong className="text-primary font-mono">{model404State.suggestedModel}</strong> and retry?
+            </p>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetModel = model404State.suggestedModel;
+                  const prompt = model404State.userPrompt;
+                  const atts = model404State.attachments;
+                  setModel404State(null);
+                  if (onUpdateSettings) {
+                    onUpdateSettings({ activeModel: targetModel });
+                  }
+                  api.rememberLastWorkingModel(settings.activeProvider, targetModel);
+                  onAddLog(`Switched model to ${targetModel} with user confirmation. Retrying...`, 'info', 'AI');
+                  handleSendPrompt(prompt, atts);
+                }}
+                className="px-3.5 py-1.5 rounded-[8px] bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-medium transition-colors"
+              >
+                Switch to {model404State.suggestedModel} & Retry
+              </button>
+              <button
+                type="button"
+                onClick={() => setModel404State(null)}
+                className="px-3 py-1.5 rounded-[8px] bg-secondary hover:bg-muted text-muted-foreground hover:text-foreground text-xs transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
 
         <div ref={messagesEndRef} />
       </div>

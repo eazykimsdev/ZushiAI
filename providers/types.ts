@@ -1,5 +1,15 @@
 export type ProviderId = 'openrouter' | 'gemini' | 'claude' | 'openai';
 
+export interface LiveModelInfo {
+  id: string;
+  name: string;
+  contextLength?: number;
+  costPerMillionInput?: number;
+  costPerMillionOutput?: number;
+  description?: string;
+  recommended?: boolean;
+}
+
 export interface ModelDefinition {
   id: string;
   name: string;
@@ -19,7 +29,7 @@ export interface ProviderDefinition {
   keyHelpUrl: string;
   keyPlaceholder: string;
   defaultModel: string;
-  models: ModelDefinition[];
+  fallbackModels: LiveModelInfo[];
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
@@ -29,51 +39,43 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     icon: 'Compass',
     keyHelpUrl: 'https://openrouter.ai/keys',
     keyPlaceholder: 'sk-or-v1-...',
-    defaultModel: 'anthropic/claude-3.7-sonnet',
-    models: [
-      {
-        id: 'anthropic/claude-3.7-sonnet',
-        name: 'Claude 3.7 Sonnet (via OpenRouter)',
-        provider: 'openrouter',
-        contextWindow: 200000,
-        costPerMillionInputTokens: 3.00,
-        costPerMillionOutputTokens: 15.00,
-        recommended: true,
-        supportsImages: true,
-        description: 'Highest coding fidelity for complex Luau game architectures',
-      },
+    defaultModel: 'deepseek/deepseek-chat',
+    fallbackModels: [
       {
         id: 'deepseek/deepseek-chat',
-        name: 'DeepSeek V3 (via OpenRouter)',
-        provider: 'openrouter',
-        contextWindow: 64000,
-        costPerMillionInputTokens: 0.27,
-        costPerMillionOutputTokens: 1.10,
-        recommended: false,
-        supportsImages: false,
-        description: 'Ultra cost-effective, exceptional coding and logic skills',
+        name: 'DeepSeek V3 (Chat)',
+        contextLength: 64000,
+        costPerMillionInput: 0.27,
+        costPerMillionOutput: 1.10,
+        recommended: true,
+        description: 'Fast, high-fidelity reasoning & Luau scripting at ultra-low cost',
       },
       {
         id: 'google/gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash (via OpenRouter)',
-        provider: 'openrouter',
-        contextWindow: 1048576,
-        costPerMillionInputTokens: 0.15,
-        costPerMillionOutputTokens: 0.60,
+        name: 'Gemini 2.5 Flash',
+        contextLength: 1048576,
+        costPerMillionInput: 0.15,
+        costPerMillionOutput: 0.60,
+        recommended: true,
+        description: 'Fast 1M context engine for rapid code iterations',
+      },
+      {
+        id: 'anthropic/claude-3.5-sonnet',
+        name: 'Claude 3.5 Sonnet',
+        contextLength: 200000,
+        costPerMillionInput: 3.00,
+        costPerMillionOutput: 15.00,
         recommended: false,
-        supportsImages: true,
-        description: 'Fastest 1M context model for rapid code generation',
+        description: 'Exceptional architectural precision for game mechanics',
       },
       {
         id: 'openai/gpt-4o',
-        name: 'GPT-4o (via OpenRouter)',
-        provider: 'openrouter',
-        contextWindow: 128000,
-        costPerMillionInputTokens: 2.50,
-        costPerMillionOutputTokens: 10.00,
+        name: 'GPT-4o',
+        contextLength: 128000,
+        costPerMillionInput: 2.50,
+        costPerMillionOutput: 10.00,
         recommended: false,
-        supportsImages: true,
-        description: 'Solid multi-modal reasoning and tool planning',
+        description: 'Omni model for complex reasoning and planning',
       },
     ],
   },
@@ -84,39 +86,33 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     keyHelpUrl: 'https://aistudio.google.com/app/apikey',
     keyPlaceholder: 'AIzaSy...',
     defaultModel: 'gemini-2.5-flash',
-    models: [
+    fallbackModels: [
       {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
-        provider: 'gemini',
-        contextWindow: 1048576,
-        costPerMillionInputTokens: 0.15,
-        costPerMillionOutputTokens: 0.60,
+        contextLength: 1048576,
+        costPerMillionInput: 0.15,
+        costPerMillionOutput: 0.60,
         recommended: true,
-        supportsImages: true,
-        description: 'Fastest, highly capable for Luau scripting, planning & iterations',
+        description: 'Fastest 1M context model for Luau scripting and planning',
       },
       {
         id: 'gemini-2.5-pro',
         name: 'Gemini 2.5 Pro',
-        provider: 'gemini',
-        contextWindow: 2097152,
-        costPerMillionInputTokens: 1.25,
-        costPerMillionOutputTokens: 5.00,
+        contextLength: 2097152,
+        costPerMillionInput: 1.25,
+        costPerMillionOutput: 5.00,
         recommended: false,
-        supportsImages: true,
-        description: 'Deep reasoning, complex game systems & architecture design',
+        description: 'Deep reasoning for complex multi-module game architectures',
       },
       {
         id: 'gemini-2.0-flash',
         name: 'Gemini 2.0 Flash',
-        provider: 'gemini',
-        contextWindow: 1048576,
-        costPerMillionInputTokens: 0.10,
-        costPerMillionOutputTokens: 0.40,
+        contextLength: 1048576,
+        costPerMillionInput: 0.10,
+        costPerMillionOutput: 0.40,
         recommended: false,
-        supportsImages: true,
-        description: 'Ultra-low latency fallback model',
+        description: 'Ultra-low latency fallback engine',
       },
     ],
   },
@@ -126,29 +122,16 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     icon: 'Zap',
     keyHelpUrl: 'https://console.anthropic.com/settings/keys',
     keyPlaceholder: 'sk-ant-api03-...',
-    defaultModel: 'claude-3-7-sonnet-20250219',
-    models: [
+    defaultModel: 'claude-3-5-sonnet-20241022',
+    fallbackModels: [
       {
-        id: 'claude-3-7-sonnet-20250219',
-        name: 'Claude 3.7 Sonnet',
-        provider: 'claude',
-        contextWindow: 200000,
-        costPerMillionInputTokens: 3.00,
-        costPerMillionOutputTokens: 15.00,
-        recommended: false,
-        supportsImages: true,
-        description: 'Hybrid reasoning and state-of-the-art coding fidelity',
-      },
-      {
-        id: 'claude-3-5-haiku-20241022',
-        name: 'Claude 3.5 Haiku',
-        provider: 'claude',
-        contextWindow: 200000,
-        costPerMillionInputTokens: 0.80,
-        costPerMillionOutputTokens: 4.00,
-        recommended: false,
-        supportsImages: false,
-        description: 'Fast, lightweight agent helper for minor checks',
+        id: 'claude-3-5-sonnet-20241022',
+        name: 'Claude 3.5 Sonnet',
+        contextLength: 200000,
+        costPerMillionInput: 3.00,
+        costPerMillionOutput: 15.00,
+        recommended: true,
+        description: 'State of the art coding and logic reasoning',
       },
     ],
   },
@@ -159,39 +142,24 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     keyHelpUrl: 'https://platform.openai.com/api-keys',
     keyPlaceholder: 'sk-proj-...',
     defaultModel: 'gpt-4o',
-    models: [
+    fallbackModels: [
       {
         id: 'gpt-4o',
         name: 'GPT-4o',
-        provider: 'openai',
-        contextWindow: 128000,
-        costPerMillionInputTokens: 2.50,
-        costPerMillionOutputTokens: 10.00,
-        recommended: false,
-        supportsImages: true,
+        contextLength: 128000,
+        costPerMillionInput: 2.50,
+        costPerMillionOutput: 10.00,
+        recommended: true,
         description: 'Omni model for complex tool use and code generation',
       },
       {
         id: 'gpt-4o-mini',
         name: 'GPT-4o Mini',
-        provider: 'openai',
-        contextWindow: 128000,
-        costPerMillionInputTokens: 0.15,
-        costPerMillionOutputTokens: 0.60,
+        contextLength: 128000,
+        costPerMillionInput: 0.15,
+        costPerMillionOutput: 0.60,
         recommended: false,
-        supportsImages: true,
         description: 'Budget-friendly quick coding assistant',
-      },
-      {
-        id: 'o3-mini',
-        name: 'o3-mini',
-        provider: 'openai',
-        contextWindow: 200000,
-        costPerMillionInputTokens: 1.10,
-        costPerMillionOutputTokens: 4.40,
-        recommended: false,
-        supportsImages: false,
-        description: 'Reasoning model for math & game simulation logic',
       },
     ],
   },
@@ -202,13 +170,33 @@ export function calculateEstimatedCost(
   inputTokens: number,
   outputTokens: number
 ): number {
-  for (const provider of Object.values(PROVIDERS)) {
-    const model = provider.models.find((m) => m.id === modelId);
-    if (model) {
-      const inputCost = (inputTokens / 1_000_000) * model.costPerMillionInputTokens;
-      const outputCost = (outputTokens / 1_000_000) * model.costPerMillionOutputTokens;
-      return +(inputCost + outputCost).toFixed(6);
-    }
+  let rateIn = 1.0;
+  let rateOut = 3.0;
+
+  if (modelId.includes('claude-3.7') || modelId.includes('claude-3-7')) {
+    rateIn = 3.0;
+    rateOut = 15.0;
+  } else if (modelId.includes('claude-3.5') || modelId.includes('claude-3-5')) {
+    rateIn = 3.0;
+    rateOut = 15.0;
+  } else if (modelId.includes('deepseek')) {
+    rateIn = 0.27;
+    rateOut = 1.10;
+  } else if (modelId.includes('flash')) {
+    rateIn = 0.15;
+    rateOut = 0.60;
+  } else if (modelId.includes('pro')) {
+    rateIn = 1.25;
+    rateOut = 5.00;
+  } else if (modelId.includes('gpt-4o-mini')) {
+    rateIn = 0.15;
+    rateOut = 0.60;
+  } else if (modelId.includes('gpt-4o')) {
+    rateIn = 2.50;
+    rateOut = 10.00;
   }
-  return +(((inputTokens + outputTokens) / 1_000_000) * 0.5).toFixed(6);
+
+  const costIn = (inputTokens / 1_000_000) * rateIn;
+  const costOut = (outputTokens / 1_000_000) * rateOut;
+  return +((costIn + costOut).toFixed(6));
 }

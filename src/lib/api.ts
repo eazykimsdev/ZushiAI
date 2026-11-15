@@ -1,22 +1,90 @@
 import { invoke } from '@tauri-apps/api/core';
 import { AiChatResult, Project, RunHistoryRecord, UserSettings } from '../types';
-import { ProviderId } from '../../providers/types';
+import { ProviderId, LiveModelInfo, PROVIDERS } from '../../providers/types';
 
 export interface TestKeyResult {
   success: boolean;
   message: string;
+  rawError?: string;
+  errorCode?: number;
   latencyMs?: number;
-  availableModels?: string[];
+  availableModels?: LiveModelInfo[];
+  suggestedModel?: string;
+}
+
+export interface MappedApiError {
+  isModel404: boolean;
+  isKeyRejected: boolean;
+  isQuotaExceeded: boolean;
+  isRateLimit: boolean;
+  code?: number;
+  humanMessage: string;
+  rawError?: string;
+  suggestedReplacement?: string;
+}
+
+export function parseApiError(err: any, currentModel?: string): MappedApiError {
+  const message = typeof err === 'string' ? err : err?.message || String(err);
+  
+  const match = message.match(/^HTTP_(\d+):([^:]+):(.*)$/s);
+  if (match) {
+    const code = parseInt(match[1], 10);
+    const human = match[2];
+    const raw = match[3];
+    return {
+      isModel404: code === 404,
+      isKeyRejected: code === 401 || code === 403,
+      isQuotaExceeded: code === 402,
+      isRateLimit: code === 429,
+      code,
+      humanMessage: human,
+      rawError: raw,
+      suggestedReplacement: code === 404 ? 'deepseek/deepseek-chat' : undefined,
+    };
+  }
+
+  const is404 = message.includes('404') || message.includes('no longer available') || message.includes('not found');
+  const is401 = message.includes('401') || message.includes('403') || message.includes('API_KEY_INVALID') || message.includes('Key rejected') || message.includes('unauthorized');
+  const is402 = message.includes('402') || message.includes('credit') || message.includes('quota');
+  const is429 = message.includes('429') || message.includes('rate limit');
+
+  let human = message;
+  let code: number | undefined;
+
+  if (is404) {
+    code = 404;
+    human = `This model ('${currentModel || 'selected'}') is no longer available. Pick another.`;
+  } else if (is401) {
+    code = 401;
+    human = 'Key rejected by provider. Please verify your API key.';
+  } else if (is402) {
+    code = 402;
+    human = 'Insufficient credits on provider account. Please add credits.';
+  } else if (is429) {
+    code = 429;
+    human = 'Rate limit reached. Please wait a moment and retry.';
+  }
+
+  return {
+    isModel404: is404,
+    isKeyRejected: is401,
+    isQuotaExceeded: is402,
+    isRateLimit: is429,
+    code,
+    humanMessage: human,
+    rawError: message,
+    suggestedReplacement: is404 ? 'deepseek/deepseek-chat' : undefined,
+  };
 }
 
 function isTauriEnvironment(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-const LOCAL_STORAGE_PROJECTS_KEY = 'lihforge_projects_cache';
-const LOCAL_STORAGE_SETTINGS_KEY = 'lihforge_settings_cache';
-const LOCAL_STORAGE_KEY_STATUS_KEY = 'lihforge_key_status';
-const LOCAL_STORAGE_HISTORY_KEY = 'lihforge_history_cache';
+const LOCAL_STORAGE_PROJECTS_KEY = 'zushi_projects_cache';
+const LOCAL_STORAGE_SETTINGS_KEY = 'zushi_settings_cache';
+const LOCAL_STORAGE_KEY_STATUS_KEY = 'zushi_key_status';
+const LOCAL_STORAGE_HISTORY_KEY = 'zushi_history_cache';
 
 export const api = {
   async getProjects(): Promise<Project[]> {
@@ -112,9 +180,11 @@ export const api = {
   async getSettings(): Promise<UserSettings> {
     if (isTauriEnvironment()) {
       const raw = await invoke<Record<string, string>>('get_settings');
+      const provider = (raw.activeProvider as ProviderId) || 'openrouter';
+      const lastWorking = this.getLastWorkingModel(provider);
       return {
-        activeProvider: (raw.activeProvider as ProviderId) || 'openrouter',
-        activeModel: raw.activeModel || 'anthropic/claude-3.7-sonnet',
+        activeProvider: provider,
+        activeModel: raw.activeModel || lastWorking || PROVIDERS[provider]?.defaultModel || 'deepseek/deepseek-chat',
         monthlyBudgetLimit: raw.monthlyBudgetLimit ? parseFloat(raw.monthlyBudgetLimit) : 10.0,
         sessionBudgetLimit: raw.sessionBudgetLimit ? parseFloat(raw.sessionBudgetLimit) : 2.0,
         currentMonthSpend: raw.currentMonthSpend ? parseFloat(raw.currentMonthSpend) : 0.0,
@@ -126,14 +196,19 @@ export const api = {
     const cached = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
     if (cached) {
       try {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        const lastWorking = this.getLastWorkingModel(parsed.activeProvider || 'openrouter');
+        if (lastWorking && !parsed.activeModel) {
+          parsed.activeModel = lastWorking;
+        }
+        return parsed;
       } catch {
         // fallback
       }
     }
     return {
       activeProvider: 'openrouter',
-      activeModel: 'anthropic/claude-3.7-sonnet',
+      activeModel: 'deepseek/deepseek-chat',
       monthlyBudgetLimit: 10.0,
       sessionBudgetLimit: 2.0,
       currentMonthSpend: 0.0,
@@ -157,7 +232,7 @@ export const api = {
       await invoke('save_api_key', { provider, apiKey });
       return;
     }
-    localStorage.setItem(`lihforge_key_${provider}`, apiKey);
+    localStorage.setItem(`zushi_key_${provider}`, apiKey);
     sessionStorage.setItem(`${LOCAL_STORAGE_KEY_STATUS_KEY}_${provider}`, 'true');
     sessionStorage.setItem(`temp_key_${provider}`, apiKey);
   },
@@ -166,7 +241,7 @@ export const api = {
     if (isTauriEnvironment()) {
       return await invoke<boolean>('has_api_key', { provider });
     }
-    const local = localStorage.getItem(`lihforge_key_${provider}`);
+    const local = localStorage.getItem(`zushi_key_${provider}`);
     const session = sessionStorage.getItem(`temp_key_${provider}`);
     return Boolean(local || session);
   },
@@ -176,9 +251,83 @@ export const api = {
       await invoke('delete_api_key', { provider });
       return;
     }
-    localStorage.removeItem(`lihforge_key_${provider}`);
+    localStorage.removeItem(`zushi_key_${provider}`);
     sessionStorage.removeItem(`${LOCAL_STORAGE_KEY_STATUS_KEY}_${provider}`);
     sessionStorage.removeItem(`temp_key_${provider}`);
+  },
+
+  rememberLastWorkingModel(provider: ProviderId, model: string): void {
+    try {
+      localStorage.setItem(`zushi_last_working_model_${provider}`, model);
+    } catch {
+      // ignore
+    }
+  },
+
+  getLastWorkingModel(provider: ProviderId): string | null {
+    try {
+      return localStorage.getItem(`zushi_last_working_model_${provider}`);
+    } catch {
+      return null;
+    }
+  },
+
+  async fetchLiveModels(provider: ProviderId, customKey?: string): Promise<LiveModelInfo[]> {
+    if (isTauriEnvironment()) {
+      try {
+        return await invoke<LiveModelInfo[]>('fetch_provider_models', {
+          provider,
+          customKey: customKey || null,
+        });
+      } catch (err) {
+        console.warn('Tauri fetch_provider_models error, using fallback list', err);
+      }
+    }
+
+    // Direct browser fetch
+    try {
+      if (provider === 'openrouter') {
+        const key = customKey || localStorage.getItem(`zushi_key_${provider}`) || sessionStorage.getItem(`temp_key_${provider}`);
+        const headers: Record<string, string> = {
+          'HTTP-Referer': 'https://zushiai.local',
+          'X-Title': 'ZushiAI Roblox Builder',
+        };
+        if (key) headers['Authorization'] = `Bearer ${key}`;
+        const resp = await fetch('https://openrouter.ai/api/v1/models', { headers });
+        if (resp.ok) {
+          const data = await resp.json();
+          return (data.data || []).map((item: any) => ({
+            id: item.id,
+            name: item.name || item.id,
+            contextLength: item.context_length,
+            costPerMillionInput: item.pricing?.prompt ? parseFloat(item.pricing.prompt) * 1_000_000 : undefined,
+            costPerMillionOutput: item.pricing?.completion ? parseFloat(item.pricing.completion) * 1_000_000 : undefined,
+            description: item.description,
+          }));
+        }
+      } else if (provider === 'gemini') {
+        const key = customKey || localStorage.getItem(`zushi_key_${provider}`) || sessionStorage.getItem(`temp_key_${provider}`);
+        if (!key) return PROVIDERS.gemini.fallbackModels;
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          return (data.models || [])
+            .filter((m: any) => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes('generateContent'))
+            .map((m: any) => ({
+              id: (m.name || '').replace('models/', ''),
+              name: m.displayName || m.name,
+              contextLength: m.inputTokenLimit,
+              costPerMillionInput: 0.15,
+              costPerMillionOutput: 0.60,
+              description: m.description,
+            }));
+        }
+      }
+    } catch (e) {
+      console.warn('Browser model fetch error', e);
+    }
+
+    return PROVIDERS[provider]?.fallbackModels || [];
   },
 
   async testApiKey(
@@ -187,16 +336,20 @@ export const api = {
     customKey?: string
   ): Promise<TestKeyResult> {
     if (isTauriEnvironment()) {
-      return await invoke<TestKeyResult>('test_api_key', {
+      const result = await invoke<TestKeyResult>('test_api_key', {
         provider,
         model,
         customKey: customKey || null,
       });
+      if (result.success) {
+        this.rememberLastWorkingModel(provider, model);
+      }
+      return result;
     }
 
     const key =
       customKey ||
-      localStorage.getItem(`lihforge_key_${provider}`) ||
+      localStorage.getItem(`zushi_key_${provider}`) ||
       sessionStorage.getItem(`temp_key_${provider}`);
     if (!key) {
       return {
@@ -208,69 +361,88 @@ export const api = {
     try {
       const start = performance.now();
       if (provider === 'openrouter') {
-        const resp = await fetch('https://openrouter.ai/api/v1/auth/key', {
+        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${key}`,
-            'HTTP-Referer': 'https://lihforge.local',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://zushiai.local',
+            'X-Title': 'ZushiAI Roblox Builder',
           },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: 'ping' }],
+            max_tokens: 1,
+          }),
         });
         const latency = Math.round(performance.now() - start);
         if (resp.ok) {
-          const data = await resp.json();
+          this.rememberLastWorkingModel(provider, model);
+          const liveModels = await this.fetchLiveModels('openrouter', key).catch(() => undefined);
           return {
             success: true,
-            message: `OpenRouter verified! Label: ${data.data?.label || 'Active'} (${latency}ms)`,
+            message: `Key connected and model verified! (${latency}ms latency)`,
             latencyMs: latency,
+            errorCode: 200,
+            availableModels: liveModels,
           };
         } else {
+          const errText = await resp.text();
+          const cleanErr = parseApiError(`HTTP_${resp.status}:OpenRouter error:${errText}`, model);
+          const liveModels = await this.fetchLiveModels('openrouter', key).catch(() => undefined);
+          const suggested = resp.status === 404 ? liveModels?.[0]?.id || 'deepseek/deepseek-chat' : undefined;
+
           return {
             success: false,
-            message: `OpenRouter verification failed: HTTP ${resp.status}`,
+            message: cleanErr.humanMessage,
+            rawError: errText,
+            errorCode: resp.status,
             latencyMs: latency,
+            availableModels: liveModels,
+            suggestedModel: suggested,
           };
         }
       } else if (provider === 'gemini') {
+        const cleanModel = model.replace('models/', '');
         const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models?key=${key}`
+          `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'ping' }] }],
+              generationConfig: { maxOutputTokens: 1 },
+            }),
+          }
         );
         const latency = Math.round(performance.now() - start);
         if (resp.ok) {
-          const data = await resp.json();
-          const models = (data.models || []).map((m: any) =>
-            (m.name || '').replace('models/', '')
-          );
+          this.rememberLastWorkingModel(provider, model);
+          const liveModels = await this.fetchLiveModels('gemini', key).catch(() => undefined);
           return {
             success: true,
-            message: `Verified successfully! (${latency}ms latency)`,
+            message: `Google Gemini key verified successfully! (${latency}ms latency)`,
             latencyMs: latency,
-            availableModels: models,
+            errorCode: 200,
+            availableModels: liveModels,
           };
         } else {
+          const errText = await resp.text();
+          const isKeyErr = resp.status === 400 && (errText.includes('API_KEY_INVALID') || errText.includes('INVALID_ARGUMENT'));
+          const mapped = parseApiError(`HTTP_${isKeyErr ? 401 : resp.status}:Gemini error:${errText}`, cleanModel);
+          const liveModels = await this.fetchLiveModels('gemini', key).catch(() => undefined);
           return {
             success: false,
-            message: `Failed: HTTP ${resp.status}`,
+            message: mapped.humanMessage,
+            rawError: errText,
+            errorCode: isKeyErr ? 401 : resp.status,
             latencyMs: latency,
-          };
-        }
-      } else if (provider === 'openai') {
-        const resp = await fetch('https://api.openai.com/v1/models', {
-          headers: { Authorization: `Bearer ${key}` },
-        });
-        const latency = Math.round(performance.now() - start);
-        if (resp.ok) {
-          return {
-            success: true,
-            message: `OpenAI key verified successfully! (${latency}ms)`,
-            latencyMs: latency,
-          };
-        } else {
-          return {
-            success: false,
-            message: `OpenAI verification failed: HTTP ${resp.status}`,
-            latencyMs: latency,
+            availableModels: liveModels,
+            suggestedModel: resp.status === 404 ? liveModels?.[0]?.id : undefined,
           };
         }
       }
+
       return {
         success: true,
         message: 'Key test passed.',
@@ -279,7 +451,8 @@ export const api = {
     } catch (err: any) {
       return {
         success: false,
-        message: `Network error: ${err.message}`,
+        message: `Network error or provider unreachable: ${err.message}`,
+        rawError: String(err),
       };
     }
   },
@@ -292,146 +465,134 @@ export const api = {
     customKey?: string
   ): Promise<AiChatResult> {
     if (isTauriEnvironment()) {
-      return await invoke<AiChatResult>('run_ai_chat', {
-        provider,
-        model,
-        systemPrompt,
-        messages,
-        customKey: customKey || null,
-      });
+      try {
+        const res = await invoke<AiChatResult>('run_ai_chat', {
+          provider,
+          model,
+          systemPrompt,
+          messages,
+          customKey: customKey || null,
+        });
+        this.rememberLastWorkingModel(provider, model);
+        return res;
+      } catch (err: any) {
+        throw parseApiError(err, model);
+      }
     }
 
-    // Direct browser fallback for development
+    // Direct browser fallback
     const key =
       customKey ||
-      localStorage.getItem(`lihforge_key_${provider}`) ||
+      localStorage.getItem(`zushi_key_${provider}`) ||
       sessionStorage.getItem(`temp_key_${provider}`);
     if (!key) {
-      throw new Error(`No API key provided for ${provider}. Please enter your key in Settings or in the chat.`);
+      throw {
+        isModel404: false,
+        isKeyRejected: true,
+        humanMessage: `No API key provided for ${provider}. Please enter your key in Settings or in the chat.`,
+      };
     }
 
     const start = performance.now();
-    if (provider === 'openrouter') {
-      const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://lihforge.local',
-          'X-Title': 'LihForge Roblox Builder',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        }),
-      });
-
-      if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(`OpenRouter error (${resp.status}): ${err}`);
-      }
-
-      const data = await resp.json();
-      const text = data.choices?.[0]?.message?.content || 'No response content';
-      const inTokens = data.usage?.prompt_tokens || 350;
-      const outTokens = data.usage?.completion_tokens || 450;
-      const durationMs = Math.round(performance.now() - start);
-
-      return {
-        content: text,
-        tokensInput: inTokens,
-        tokensOutput: outTokens,
-        estimatedCost: ((inTokens / 1000000) * 3 + (outTokens / 1000000) * 15),
-        durationMs,
-        model,
-        provider,
-      };
-    } else if (provider === 'gemini') {
-      const cleanModel = model.replace('models/', '');
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key}`,
-        {
+    try {
+      if (provider === 'openrouter') {
+        const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${key}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://zushiai.local',
+            'X-Title': 'ZushiAI Roblox Builder',
+          },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemPrompt }] },
-            contents: messages.map((m) => ({
-              role: m.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: m.content }],
-            })),
+            model,
+            messages: [{ role: 'system', content: systemPrompt }, ...messages],
           }),
+        });
+
+        if (!resp.ok) {
+          const err = await resp.text();
+          throw parseApiError(`HTTP_${resp.status}:OpenRouter error:${err}`, model);
         }
-      );
 
-      if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(`Google Gemini error (${resp.status}): ${err}`);
-      }
+        const data = await resp.json();
+        const text = data.choices?.[0]?.message?.content || 'No response content';
+        const inTokens = data.usage?.prompt_tokens || 350;
+        const outTokens = data.usage?.completion_tokens || 450;
+        const durationMs = Math.round(performance.now() - start);
 
-      const data = await resp.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
-      const inTokens = data.usageMetadata?.promptTokenCount || 250;
-      const outTokens = data.usageMetadata?.candidatesTokenCount || 350;
-      const durationMs = Math.round(performance.now() - start);
-
-      return {
-        content: text,
-        tokensInput: inTokens,
-        tokensOutput: outTokens,
-        estimatedCost: ((inTokens / 1000000) * 0.15 + (outTokens / 1000000) * 0.60),
-        durationMs,
-        model,
-        provider,
-      };
-    } else if (provider === 'openai') {
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        this.rememberLastWorkingModel(provider, model);
+        return {
+          content: text,
+          tokensInput: inTokens,
+          tokensOutput: outTokens,
+          estimatedCost: ((inTokens / 1000000) * 0.27 + (outTokens / 1000000) * 1.10),
+          durationMs,
           model,
-          messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        }),
-      });
+          provider,
+        };
+      } else if (provider === 'gemini') {
+        const cleanModel = model.replace('models/', '');
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${key}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: systemPrompt }] },
+              contents: messages.map((m) => ({
+                role: m.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: m.content }],
+              })),
+            }),
+          }
+        );
 
-      if (!resp.ok) {
-        const err = await resp.text();
-        throw new Error(`OpenAI error (${resp.status}): ${err}`);
+        if (!resp.ok) {
+          const err = await resp.text();
+          const isKeyErr = resp.status === 400 && (err.includes('API_KEY_INVALID') || err.includes('INVALID_ARGUMENT'));
+          throw parseApiError(`HTTP_${isKeyErr ? 401 : resp.status}:Gemini error:${err}`, cleanModel);
+        }
+
+        const data = await resp.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response';
+        const inTokens = data.usageMetadata?.promptTokenCount || 250;
+        const outTokens = data.usageMetadata?.candidatesTokenCount || 350;
+        const durationMs = Math.round(performance.now() - start);
+
+        this.rememberLastWorkingModel(provider, model);
+        return {
+          content: text,
+          tokensInput: inTokens,
+          tokensOutput: outTokens,
+          estimatedCost: ((inTokens / 1000000) * 0.15 + (outTokens / 1000000) * 0.60),
+          durationMs,
+          model,
+          provider,
+        };
       }
-
-      const data = await resp.json();
-      const text = data.choices?.[0]?.message?.content || 'No response content';
-      const inTokens = data.usage?.prompt_tokens || 300;
-      const outTokens = data.usage?.completion_tokens || 400;
-      const durationMs = Math.round(performance.now() - start);
-
-      return {
-        content: text,
-        tokensInput: inTokens,
-        tokensOutput: outTokens,
-        estimatedCost: ((inTokens / 1000000) * 2.5 + (outTokens / 1000000) * 10),
-        durationMs,
-        model,
-        provider,
-      };
+      throw new Error(`Unsupported provider: ${provider}`);
+    } catch (err: any) {
+      if (err.humanMessage) throw err;
+      throw parseApiError(err, model);
     }
-
-    throw new Error(`Unsupported provider: ${provider}`);
   },
 
   async getRunHistory(projectId?: string): Promise<RunHistoryRecord[]> {
     if (isTauriEnvironment()) {
       return await invoke<RunHistoryRecord[]>('get_run_history', {
-        projectId: projectId ?? null,
+        projectId: projectId || null,
       });
     }
+
     const cached = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY);
     if (cached) {
       try {
-        const parsed: RunHistoryRecord[] = JSON.parse(cached);
-        return projectId ? parsed.filter((r) => r.projectId === projectId) : parsed;
+        const records: RunHistoryRecord[] = JSON.parse(cached);
+        if (projectId) {
+          return records.filter((r) => r.projectId === projectId);
+        }
+        return records;
       } catch {
         return [];
       }
@@ -439,21 +600,32 @@ export const api = {
     return [];
   },
 
-  async recordRunHistory(record: Omit<RunHistoryRecord, 'id' | 'timestamp'>): Promise<RunHistoryRecord> {
+  async recordRunHistory(
+    record: Omit<RunHistoryRecord, 'id' | 'timestamp'>
+  ): Promise<RunHistoryRecord> {
     if (isTauriEnvironment()) {
       return await invoke<RunHistoryRecord>('record_run_history', {
-        ...record,
-        projectId: record.projectId ?? null,
+        projectId: record.projectId || null,
+        taskPrompt: record.taskPrompt,
+        provider: record.provider,
+        model: record.model,
+        tokensInput: record.tokensInput,
+        tokensOutput: record.tokensOutput,
+        estimatedCost: record.estimatedCost,
+        status: record.status,
+        durationMs: record.durationMs,
       });
     }
-    const full: RunHistoryRecord = {
+
+    const newRecord: RunHistoryRecord = {
       ...record,
       id: crypto.randomUUID ? crypto.randomUUID() : `run_${Date.now()}`,
       timestamp: new Date().toISOString(),
     };
+
     const current = await this.getRunHistory();
-    const updated = [full, ...current];
+    const updated = [newRecord, ...current];
     localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(updated));
-    return full;
+    return newRecord;
   },
 };
