@@ -129,3 +129,22 @@ ZushiAI is an AI Roblox game builder desktop application (BYOK, Studio bridge, b
   - Updated HTML title and metadata to `ZushiAI - AI Roblox Game Builder`.
   - Created `start-zushiai.bat` launcher with auto-fallback to `localhost:1420`.
   - Updated `README.md` with complete architecture guide and icon regeneration instructions (`npx tauri icon src/assets/logo.png`).
+
+---
+
+### Task 6: Modern UI Polish & Minimalist Design Overhaul ✅ COMPLETED
+- **Background & Lighting Clean**:
+  - Removed canvas dot grid matrix and concentric rings behind the chat area.
+  - Replaced with an ultra-smooth, deep atmospheric royal-violet radial gradient and subtle bottom vignetting.
+- **Home Screen Declutter**:
+  - Completely removed the "How a build works" 4-card section and "Start from a template" section.
+  - Removed top greeting bar ("Still up" + sun/moon toggle) for maximum vertical focus on the central prompt input.
+  - Cleaned Devil Fruit logo to remove excessive blur/glow drop-shadows.
+  - Removed all colons (`:`) in starter pills and descriptions.
+- **Roblox Sidebar & Profile Integration**:
+  - Converted server branding to Roblox Experience / Roblox Project with clean border styling.
+  - Converted user profile to Roblox Developer Profile (`@roblox_username`).
+  - Pinned System & Settings down to the bottom of the navigation list right above the status footer.
+- **Build Verification**:
+  - `npm run build` passes with 0 errors in 859ms.
+  - Git commits: `2a6ad0a`, `39ce002`.
