@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
-@import "@fontsource/fraunces/400.css";
-@import "@fontsource/fraunces/600.css";
+@import "@fontsource/bricolage-grotesque/500.css";
+@import "@fontsource/bricolage-grotesque/600.css";
+@import "@fontsource/bricolage-grotesque/700.css";
 @import "@fontsource/inter/400.css";
 @import "@fontsource/inter/500.css";
 @import "@fontsource/inter/600.css";
@@ -10,44 +11,50 @@
 
 @layer base {
   :root {
-    /* Dark Theme (Default) */
+    /* Dark theme (default) */
     --background: #0E0B14;
+    --sidebar: #0A080F;
     --surface-1: #15111F;
     --surface-2: #1C1729;
+    --surface-3: #251F36;
     --border: rgba(255, 255, 255, 0.08);
-    --border-hover: rgba(255, 255, 255, 0.14);
+    --border-hover: rgba(255, 255, 255, 0.15);
     --foreground: #EDE9F5;
     --muted-foreground: #9A93AD;
     --primary: #6D4AE0;
     --primary-foreground: #FFFFFF;
+    --primary-soft: rgba(109, 74, 224, 0.14);
     --accent-text: #A78BFA;
     --ring: rgba(109, 74, 224, 0.5);
-    
+
     --success: #5BD08A;
     --error: #F0647A;
     --warning: #E5B25D;
 
-    --font-serif: "Fraunces", Georgia, serif;
+    --font-display: "Bricolage Grotesque", "Inter", sans-serif;
     --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", monospace;
   }
 
   .light, [data-theme="light"] {
     --background: #F6F3EE;
+    --sidebar: #EFEBE3;
     --surface-1: #FFFFFF;
-    --surface-2: #EFEBE3;
+    --surface-2: #F0ECE4;
+    --surface-3: #E6E0D4;
     --border: rgba(31, 27, 46, 0.09);
-    --border-hover: rgba(31, 27, 46, 0.16);
+    --border-hover: rgba(31, 27, 46, 0.17);
     --foreground: #1F1B2E;
     --muted-foreground: #6B6578;
     --primary: #5B3FD1;
     --primary-foreground: #FFFFFF;
-    --accent-text: #6D4AE0;
+    --primary-soft: rgba(91, 63, 209, 0.10);
+    --accent-text: #5B3FD1;
     --ring: rgba(91, 63, 209, 0.4);
 
     --success: #1E8E4D;
     --error: #D93852;
-    --warning: #B38622;
+    --warning: #A5791A;
   }
 
   * {
@@ -67,7 +74,6 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Focus ring for keyboard accessibility */
   :focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--ring);
@@ -83,6 +89,7 @@
   --color-popover-foreground: var(--foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--surface-2);
   --color-secondary-foreground: var(--foreground);
   --color-muted: var(--surface-2);
@@ -95,16 +102,21 @@
   --color-border: var(--border);
   --color-input: var(--border);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
 
-  --font-serif: var(--font-serif);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --font-display: "Bricolage Grotesque", "Inter", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 }
 
-.font-serif {
-  font-family: "Fraunces", Georgia, serif;
+.font-display {
+  font-family: "Bricolage Grotesque", "Inter", sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .font-mono {
@@ -115,18 +127,17 @@
   font-family: "Inter", sans-serif;
 }
 
-/* 10px Radius Neutral Card Surfaces */
 .surface-card {
   background-color: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .surface-card-interactive {
   background-color: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  transition: background-color 140ms ease, border-color 140ms ease;
+  border-radius: 12px;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .surface-card-interactive:hover {
@@ -134,7 +145,31 @@
   border-color: var(--border-hover);
 }
 
-/* Reduced Motion Respect */
+/* Gravity rings behind the home composer */
+@keyframes ring-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: var(--ring-o); }
+  50% { transform: translate(-50%, -50%) scale(1.04); opacity: calc(var(--ring-o) * 0.5); }
+}
+
+.gravity-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 9999px;
+  border: 1px solid var(--border-hover);
+  pointer-events: none;
+  animation: ring-breathe 10s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up {
+  animation: fade-up 240ms ease both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation-duration: 0.01ms !important;
@@ -144,10 +179,9 @@
   }
 }
 
-/* Subtle scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

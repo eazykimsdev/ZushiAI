@@ -178,45 +178,41 @@ export const api = {
   },
 
   async getSettings(): Promise<UserSettings> {
+    let raw: Record<string, any> = {};
     if (isTauriEnvironment()) {
-      const raw = await invoke<Record<string, string>>('get_settings');
-      const provider = (raw.activeProvider as ProviderId) || 'openrouter';
-      const lastWorking = this.getLastWorkingModel(provider);
-      return {
-        activeProvider: provider,
-        activeModel: raw.activeModel || lastWorking || PROVIDERS[provider]?.defaultModel || 'deepseek/deepseek-chat',
-        monthlyBudgetLimit: raw.monthlyBudgetLimit ? parseFloat(raw.monthlyBudgetLimit) : 10.0,
-        sessionBudgetLimit: raw.sessionBudgetLimit ? parseFloat(raw.sessionBudgetLimit) : 2.0,
-        currentMonthSpend: raw.currentMonthSpend ? parseFloat(raw.currentMonthSpend) : 0.0,
-        currentSessionSpend: raw.currentSessionSpend ? parseFloat(raw.currentSessionSpend) : 0.0,
-        vaultPath: raw.vaultPath || 'C:\\Users\\sulma\\.gemini\\antigravity\\scratch\\v2-vault\\LihFolk Vault V2',
-      };
-    }
-
-    const cached = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
-    if (cached) {
+      raw = await invoke<Record<string, string>>('get_settings');
+    } else {
       try {
-        const parsed = JSON.parse(cached);
-        const lastWorking = this.getLastWorkingModel(parsed.activeProvider || 'openrouter');
-        if (lastWorking && !parsed.activeModel) {
-          parsed.activeModel = lastWorking;
-        }
-        return parsed;
+        raw = JSON.parse(localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY) || '{}');
       } catch {
-        // fallback
+        raw = {};
       }
     }
+    const num = (v: any, d: number) => {
+      const n = typeof v === 'number' ? v : parseFloat(v);
+      return Number.isFinite(n) ? n : d;
+    };
+    const provider = (raw.activeProvider as ProviderId) || 'openrouter';
     return {
-      activeProvider: 'openrouter',
-      activeModel: 'deepseek/deepseek-chat',
-      monthlyBudgetLimit: 10.0,
-      sessionBudgetLimit: 2.0,
-      currentMonthSpend: 0.0,
-      currentSessionSpend: 0.0,
-      vaultPath: 'C:\\Users\\sulma\\.gemini\\antigravity\\scratch\\v2-vault\\LihFolk Vault V2',
+      activeProvider: provider,
+      // Never hardcode a model: empty until the user picks one from the live list.
+      activeModel: raw.activeModel || this.getLastWorkingModel(provider) || '',
+      monthlyBudgetLimit: num(raw.monthlyBudgetLimit, 10.0),
+      sessionBudgetLimit: num(raw.sessionBudgetLimit, 2.0),
+      currentMonthSpend: num(raw.currentMonthSpend, 0),
+      currentSessionSpend: num(raw.currentSessionSpend, 0),
+      vaultPath:
+        raw.vaultPath ||
+        'C:\\Users\\sulma\\.gemini\\antigravity\\scratch\\v2-vault\\LihFolk Vault V2',
+      theme: raw.theme === 'light' ? 'light' : 'dark',
+      backgroundEffect: String(raw.backgroundEffect) !== 'false',
+      serverName: raw.serverName || '',
+      serverIcon: raw.serverIcon || '',
+      userName: raw.userName || '',
+      userHandle: raw.userHandle || '',
+      userAvatar: raw.userAvatar || '',
     };
   },
-
   async saveSetting(key: string, value: string): Promise<void> {
     if (isTauriEnvironment()) {
       await invoke('save_setting', { key, value });

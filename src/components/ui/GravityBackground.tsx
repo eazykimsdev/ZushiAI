@@ -131,7 +131,7 @@ export const GravityBackground: React.FC<GravityBackgroundProps> = ({ enabled = 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 pointer-events-none -z-10"
+      className="fixed inset-0 pointer-events-none z-0"
       style={{ background: 'var(--background)' }}
     />
   );

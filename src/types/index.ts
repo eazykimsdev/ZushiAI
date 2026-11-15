@@ -24,6 +24,11 @@ export interface UserSettings {
   vaultPath: string;
   theme?: 'dark' | 'light';
   backgroundEffect?: boolean;
+  serverName?: string;
+  serverIcon?: string;
+  userName?: string;
+  userHandle?: string;
+  userAvatar?: string;
 }
 
 export interface StatusLights {
