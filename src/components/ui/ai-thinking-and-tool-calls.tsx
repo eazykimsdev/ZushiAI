@@ -16,6 +16,7 @@ import {
   Check,
   Award,
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -96,6 +97,12 @@ export const TOOL_REGISTRY: Record<string, ToolDefinition> = {
     label: 'Quality Score Review',
     icon: Award,
     description: 'Scores system against LihFolk rubrics (minimum 8.5/10)',
+  },
+  push_to_studio: {
+    name: 'push_to_studio',
+    label: 'Push to Roblox Studio',
+    icon: Zap,
+    description: 'Deploys script instances and assets directly into active Roblox Studio place',
   },
   terminal: {
     name: 'terminal',

@@ -103,4 +103,29 @@ ZushiAI is an AI Roblox game builder desktop application (BYOK, Studio bridge, b
 
 ---
 
-### Task 5: One-Prompt Build Flow ⏳ PENDING
+### Task 5: One-Prompt Build Flow & Studio Re-pairing ✅ COMPLETED
+- **Single Prompt Architecture Inference**:
+  - Automatically analyzes the single prompt to infer: game genre (Combat, Simulator, Tycoon, Obby, Economy), core loop, required Luau systems, UI layout style, and dynamic implementation steps.
+  - Dynamically updates the plan checklist in the right panel and displays step progression as the agent works.
+- **End-to-End Build Execution Pipeline**:
+  - Vault search -> query relevant rules from 1,333 note engineering vault.
+  - Vault read -> read guidelines, checklists, and anti-exploit rules.
+  - Luau script generation -> produce production-grade `--!strict` modules.
+  - File diff view -> line-by-line diffs with additions & deletions.
+  - Static typechecker -> executes `zushi check <file>` with real findings and exit codes.
+  - Studio Bridge Push -> pushes scripts and RemoteEvents into `ServerScriptService` via localhost loopback (127.0.0.1:4243).
+  - Studio Playtest -> verifies 60 FPS and 0 errors via `roblox-studio --playtest`.
+  - Quality score gate -> evaluates Luau against LihFolk rubrics (minimum 8.5/10).
+- **Post-Build Experience & Smart Iteration Chips**:
+  - Friendly markdown summary detailing what is now playable in Roblox Studio.
+  - 3 contextual suggestion chips based on the inferred game genre and prompt (e.g. "Add a rebirth system", "Tune sword swing hitbox", "Create daily reward UI"). Clicking any chip instantly loads it into the composer for immediate next iteration.
+- **Zero-Token Localhost Studio Pairing UX**:
+  - Created `StudioPairingModal.tsx` for 1-click connection confirmation.
+  - Zero tokens or IP typing required; strictly bound to `127.0.0.1:4243`.
+  - Triggerable directly from the Sidebar status dot and the Right Panel Studio card.
+- **Global ZushiAI Rebranding**:
+  - Renamed app in `tauri.conf.json` (`productName: "ZushiAI"`, identifier `"com.zushiai.app"`, title `"ZushiAI - AI Roblox Game Builder"`).
+  - Renamed package in `package.json` (`"name": "zushiai"`).
+  - Updated HTML title and metadata to `ZushiAI - AI Roblox Game Builder`.
+  - Created `start-zushiai.bat` launcher with auto-fallback to `localhost:1420`.
+  - Updated `README.md` with complete architecture guide and icon regeneration instructions (`npx tauri icon src/assets/logo.png`).

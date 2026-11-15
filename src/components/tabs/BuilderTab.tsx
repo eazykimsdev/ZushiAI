@@ -8,6 +8,7 @@ import {
   FileText,
   File,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 import { AgentActionState, ChatMessage, Project, UserSettings } from '../../types';
 import { PROVIDERS, ProviderId } from '../../../providers/types';
@@ -169,7 +170,7 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
         onActionStateUpdate: (action) => {
           onAddLog(action, 'info', 'AGENT');
         },
-        onComplete: (finalContent, metrics) => {
+        onComplete: (finalContent, metrics, suggestions, planSteps) => {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMessageId
@@ -178,6 +179,8 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
                     content: finalContent,
                     isThinkingRunning: false,
                     metrics,
+                    suggestions,
+                    planSteps: planSteps || m.planSteps,
                   }
                 : m
             )
@@ -384,6 +387,31 @@ I will plan the architecture, query the **LihFolk 1,300-note vault rules**, gene
                             </span>
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* Contextual Suggestions for Next Steps */}
+                    {msg.suggestions && msg.suggestions.length > 0 && !msg.isThinkingRunning && (
+                      <div className="pt-1.5 flex flex-col gap-1.5 animate-in fade-in duration-200">
+                        <span className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+                          <Sparkles className="h-3 w-3 text-primary" />
+                          <span>Suggested next iterations:</span>
+                        </span>
+                        <div className="flex flex-wrap gap-2">
+                          {msg.suggestions.map((sug, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => {
+                                setPromptInput(sug);
+                              }}
+                              className="text-left text-xs px-3 py-1.5 rounded-lg bg-surface-2 hover:bg-surface-2/80 border border-border/70 hover:border-primary/50 text-foreground transition-all flex items-center gap-2 group cursor-pointer shadow-sm"
+                            >
+                              <span className="text-muted-foreground group-hover:text-primary transition-colors">•</span>
+                              <span>{sug}</span>
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

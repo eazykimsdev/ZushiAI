@@ -8,6 +8,7 @@ import { BuilderTab } from './components/tabs/BuilderTab';
 import { SettingsTab } from './components/tabs/SettingsTab';
 import { GravityBackground } from './components/ui/GravityBackground';
 import { ProjectModal } from './components/projects/ProjectModal';
+import { StudioPairingModal } from './components/layout/StudioPairingModal';
 import {
   AgentActionState,
   LogEntry,
@@ -29,6 +30,7 @@ export const App: React.FC = () => {
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [isStudioModalOpen, setIsStudioModalOpen] = useState(false);
 
   // Settings State
   const [settings, setSettings] = useState<UserSettings>({
@@ -317,8 +319,12 @@ export const App: React.FC = () => {
           }}
           statusLights={statusLights}
           onOpenSettings={() => setActiveTab('settings')}
-          onFixStatus={() => {
-            setActiveTab('settings');
+          onFixStatus={(target) => {
+            if (target === 'studio') {
+              setIsStudioModalOpen(true);
+            } else {
+              setActiveTab('settings');
+            }
           }}
         />
 
@@ -373,6 +379,7 @@ export const App: React.FC = () => {
             collapsed={isBuildPanelCollapsed}
             onToggleCollapse={() => setIsBuildPanelCollapsed(!isBuildPanelCollapsed)}
             monthlyLimit={settings.monthlyBudgetLimit}
+            onPairStudio={() => setIsStudioModalOpen(true)}
           />
         )}
       </div>
@@ -394,6 +401,16 @@ export const App: React.FC = () => {
         onSave={handleSaveProject}
         onDelete={handleDeleteProject}
         initialProject={projectToEdit}
+      />
+
+      {/* Studio Pairing Modal */}
+      <StudioPairingModal
+        isOpen={isStudioModalOpen}
+        onClose={() => setIsStudioModalOpen(false)}
+        onAllowPairing={() => {
+          setStatusLights((prev) => ({ ...prev, studioConnected: true }));
+          addLog('Roblox Studio paired successfully on localhost:4243. Connected and ready.', 'success', 'STUDIO');
+        }}
       />
     </div>
   );

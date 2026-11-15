@@ -21,6 +21,7 @@ interface RightPanelProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
   monthlyLimit: number;
+  onPairStudio?: () => void;
 }
 
 export const RightPanel: React.FC<RightPanelProps> = ({
@@ -30,6 +31,7 @@ export const RightPanel: React.FC<RightPanelProps> = ({
   collapsed = false,
   onToggleCollapse,
   monthlyLimit,
+  onPairStudio,
 }) => {
   const [selectedFileCode, setSelectedFileCode] = React.useState<{ name: string; code: string } | null>(null);
 
@@ -259,6 +261,17 @@ export const RightPanel: React.FC<RightPanelProps> = ({
               <span className="text-foreground">Localhost Loopback</span>
             </div>
           </div>
+
+          {!statusLights.studioConnected && onPairStudio && (
+            <button
+              type="button"
+              onClick={onPairStudio}
+              className="mt-2 w-full py-1.5 px-2.5 rounded-[8px] bg-primary/20 hover:bg-primary/30 text-primary hover:text-accent-text border border-primary/40 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <Radio className="h-3 w-3" />
+              <span>Pair with Studio</span>
+            </button>
+          )}
         </div>
 
         {/* Session Spend & Tokens Card */}

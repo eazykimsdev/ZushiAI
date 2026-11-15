@@ -106,6 +106,7 @@ export interface ChatMessage {
     durationMs: number;
     model: string;
   };
+  suggestions?: string[];
 }
 
 export interface AiChatResult {
