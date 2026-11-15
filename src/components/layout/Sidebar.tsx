@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import * as React from 'react';
 import {
   Database,
   Receipt,
@@ -10,280 +10,221 @@ import {
   Scroll,
   Mountain,
   SunMedium,
-  Crosshair,
   Footprints,
   Compass,
   ShoppingBag,
   Gift,
-  RefreshCw,
   FolderTree,
-  FileCode2,
-  PlayCircle,
   Search,
-  Plus,
+  ChevronDown,
 } from 'lucide-react';
 
 interface SidebarProps {
   onInsertMacroBlock?: (blockTitle: string, blockCategory: string) => void;
 }
 
+interface PaletteItem {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+}
+
 interface PaletteCategory {
+  id: string;
   name: string;
-  badge?: string;
-  badgeColor?: string;
-  items: {
-    title: string;
-    description: string;
-    icon: React.ReactNode;
-    tag?: string;
-    vaultRef?: string;
-  }[];
+  items: PaletteItem[];
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onInsertMacroBlock }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [collapsedCategories, setCollapsedCategories] = React.useState<Record<string, boolean>>({});
+
+  const toggleCategory = (id: string) => {
+    setCollapsedCategories((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const categories: PaletteCategory[] = [
     {
-      name: 'CORE SYSTEMS',
-      badge: 'SETUP',
-      badgeColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+      id: 'core',
+      name: 'Core Systems',
       items: [
         {
           title: 'DataStore Safety',
-          description: 'Session-locked player data with auto-save & migration',
-          icon: <Database className="w-3.5 h-3.5 text-blue-400" />,
-          tag: 'SERVER',
-          vaultRef: 'DataStore Safety.md',
+          description: 'Session-locked player data with auto-save & retry budgets',
+          icon: <Database className="h-4 w-4 text-muted-foreground" />,
         },
         {
           title: 'ProcessReceipt',
           description: 'Idempotent DevProduct & Pass purchase transactions',
-          icon: <Receipt className="w-3.5 h-3.5 text-emerald-400" />,
-          tag: 'SERVER',
-          vaultRef: 'Monetization Compliance.md',
+          icon: <Receipt className="h-4 w-4 text-muted-foreground" />,
         },
         {
           title: 'Anti-Exploit Remote Guard',
-          description: 'Server-authoritative rate-limits & payload schema',
-          icon: <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />,
-          tag: 'SECURITY',
-          vaultRef: 'Secure Remotes.md',
+          description: 'Server-authoritative rate-limits & payload type checks',
+          icon: <ShieldAlert className="h-4 w-4 text-muted-foreground" />,
         },
         {
           title: 'Global Leaderboards',
-          description: 'OrderedDataStore synced top players podium',
-          icon: <Trophy className="w-3.5 h-3.5 text-amber-400" />,
-          tag: 'NET',
+          description: 'OrderedDataStore synced podium rankings',
+          icon: <Trophy className="h-4 w-4 text-muted-foreground" />,
         },
       ],
     },
     {
-      name: 'GAMEPLAY & COMBAT',
-      badge: 'COMBAT',
-      badgeColor: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+      id: 'combat',
+      name: 'Gameplay & Combat',
       items: [
         {
           title: 'Hitbox / Melee Combat',
           description: 'Spatial query raycast hitbox with hit-stop & VFX',
-          icon: <Swords className="w-3.5 h-3.5 text-rose-400" />,
-          tag: 'CLIENT+SERVER',
+          icon: <Swords className="h-4 w-4 text-muted-foreground" />,
         },
         {
           title: 'Round & Match Loop',
           description: 'Intermission, map teleport, win-condition state machine',
-          icon: <Timer className="w-3.5 h-3.5 text-amber-400" />,
-          tag: 'STATE',
+          icon: <Timer className="h-4 w-4 text-muted-foreground" />,
         },
         {
           title: 'Inventory & Backpack',
           description: 'Stackable items, hotbar equip, weight constraints',
-          icon: <Boxes className="w-3.5 h-3.5 text-indigo-400" />,
-          tag: 'SYSTEM',
+          icon: <Boxes className="h-4 w-4 text-muted-foreground" />,
         },
         {
           title: 'Quest & Achievement Engine',
-          description: 'Progressive goals, notification toasts & rewards',
-          icon: <Scroll className="w-3.5 h-3.5 text-cyan-400" />,
-          tag: 'PROGRESS',
+          description: 'Progress tracker, kill/collect triggers, claim rewards',
+          icon: <Scroll className="h-4 w-4 text-muted-foreground" />,
         },
       ],
     },
     {
-      name: 'WORLD & MAP',
-      badge: 'WORLD',
-      badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+      id: 'monetization',
+      name: 'Monetization & Retention',
       items: [
         {
-          title: 'Biome & Terrain Builder',
-          description: 'Procedural heightmap voxels, material grading',
-          icon: <Mountain className="w-3.5 h-3.5 text-emerald-400" />,
-          tag: 'MAP',
+          title: 'Pet Hatching & Probability',
+          description: '2026 odds compliance, weighted RNG, unbox animations',
+          icon: <Gift className="h-4 w-4 text-muted-foreground" />,
         },
         {
-          title: 'Atmosphere & Post-FX',
-          description: 'ColorCorrection, Bloom, DepthOfField & Skybox setup',
-          icon: <SunMedium className="w-3.5 h-3.5 text-amber-400" />,
-          tag: 'LIGHTING',
+          title: 'In-Game Currency Shop',
+          description: 'Coin/Gem purchases, tiered gamepass perks',
+          icon: <ShoppingBag className="h-4 w-4 text-muted-foreground" />,
         },
         {
-          title: 'Dynamic Spawner Grid',
-          description: 'Mob / Ore / Coin respawn logic with zone bounding',
-          icon: <Crosshair className="w-3.5 h-3.5 text-purple-400" />,
-          tag: 'SERVER',
-        },
-        {
-          title: 'Obby Obstacle Course',
-          description: 'Kill-bricks, conveyor belts, rotating lasers, checkpoints',
-          icon: <Footprints className="w-3.5 h-3.5 text-sky-400" />,
-          tag: 'OBBY',
+          title: 'FTUE & Onboarding Guide',
+          description: 'First 60s guide arrows, stuck detection, skip hints',
+          icon: <Compass className="h-4 w-4 text-muted-foreground" />,
         },
       ],
     },
     {
-      name: 'INTERFACE & HUD',
-      badge: 'UI',
-      badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+      id: 'world',
+      name: 'World & Environment',
       items: [
         {
-          title: 'Simulator Glass HUD',
-          description: 'Responsive coins, level-up bar, multiplier badge',
-          icon: <Compass className="w-3.5 h-3.5 text-indigo-400" />,
-          tag: 'SCREENGUI',
+          title: 'Dungeon & Obby Generation',
+          description: 'Procedural checkpoint obby with moving hazards',
+          icon: <Mountain className="h-4 w-4 text-muted-foreground" />,
         },
         {
-          title: 'Shop & Gamepass Menu',
-          description: 'Animated tabbed store with Buy-Robux hooks',
-          icon: <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />,
-          tag: 'SCREENGUI',
+          title: 'Atmosphere & Day/Night Lighting',
+          description: 'Atmosphere presets, sun-ray bloom, color correction',
+          icon: <SunMedium className="h-4 w-4 text-muted-foreground" />,
         },
         {
-          title: 'Daily Streak / Spin Wheel',
-          description: '24-hour timestamp verification with reward tiers',
-          icon: <Gift className="w-3.5 h-3.5 text-pink-400" />,
-          tag: 'RETENTION',
-        },
-        {
-          title: 'Rebirth / Prestige System',
-          description: 'Stat reset, permanent token boost & tier perks',
-          icon: <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />,
-          tag: 'PROGRESS',
-        },
-      ],
-    },
-    {
-      name: 'STUDIO OPS',
-      badge: 'STUDIO',
-      badgeColor: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
-      items: [
-        {
-          title: 'Inspect Explorer Tree',
-          description: 'Query ReplicatedStorage, ServerScriptService, StarterGui',
-          icon: <FolderTree className="w-3.5 h-3.5 text-zinc-400" />,
-          tag: 'BRIDGE',
-        },
-        {
-          title: 'Inject Script / Module',
-          description: 'Push Luau source directly into Studio instance',
-          icon: <FileCode2 className="w-3.5 h-3.5 text-blue-400" />,
-          tag: 'BRIDGE',
-        },
-        {
-          title: 'Trigger Playtest Session',
-          description: 'Execute local test run and read output log',
-          icon: <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />,
-          tag: 'BRIDGE',
+          title: 'Sound & Audio Layer Pool',
+          description: 'Combat hits, UI clicks, footsteps with spatial roll-off',
+          icon: <Footprints className="h-4 w-4 text-muted-foreground" />,
         },
       ],
     },
   ];
 
-  const filteredCategories = categories
-    .map((cat) => ({
-      ...cat,
-      items: cat.items.filter(
-        (item) =>
-          item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (item.tag && item.tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      ),
-    }))
-    .filter((cat) => cat.items.length > 0);
+  const filteredCategories = categories.map((cat) => ({
+    ...cat,
+    items: cat.items.filter(
+      (item) =>
+        item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.description.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+  })).filter((cat) => cat.items.length > 0);
 
   return (
-    <aside className="w-64 border-r border-white/10 bg-[#0a0b12]/80 backdrop-blur-md flex flex-col select-none h-full">
-      {/* Header & Filter */}
-      <div className="p-3 border-b border-white/10">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+    <aside className="w-64 border-r border-border bg-card flex flex-col select-none h-full overflow-hidden shrink-0">
+      {/* Header with Search */}
+      <div className="p-3 border-b border-border space-y-2">
+        <div className="flex items-center gap-2 px-1">
+          <FolderTree className="h-4 w-4 text-primary" />
+          <span className="text-xs font-semibold text-foreground">
             Block Palette
           </span>
-          <span className="text-[10px] font-mono text-zinc-500 px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/5">
-            20 MACROS
-          </span>
         </div>
+
         <div className="relative">
-          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
+          <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search blocks & APIs..."
-            className="w-full bg-black/40 border border-white/10 rounded-md pl-8 pr-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-indigo-500/50 transition-colors"
+            placeholder="Search mechanics..."
+            className="w-full bg-background border border-border rounded-[10px] pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring"
           />
         </div>
       </div>
 
-      {/* Palette list */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-4">
-        {filteredCategories.map((category) => (
-          <div key={category.name} className="space-y-1.5">
-            <div className="flex items-center justify-between px-1 py-0.5">
-              <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-                {category.name}
-              </span>
-              {category.badge && (
-                <span
-                  className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${category.badgeColor}`}
-                >
-                  {category.badge}
+      {/* Collapsible Category List */}
+      <div className="flex-1 overflow-y-auto p-2 space-y-2">
+        {filteredCategories.map((category) => {
+          const isCollapsed = Boolean(collapsedCategories[category.id]);
+          return (
+            <div key={category.id} className="space-y-1">
+              {/* Category Header */}
+              <button
+                type="button"
+                onClick={() => toggleCategory(category.id)}
+                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-md hover:bg-secondary text-xs text-muted-foreground hover:text-foreground transition-colors duration-140"
+              >
+                <span className="font-medium text-[11px] uppercase tracking-wider">
+                  {category.name}
                 </span>
-              )}
-            </div>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 transition-transform duration-140 ${
+                    isCollapsed ? '-rotate-90' : 'rotate-0'
+                  }`}
+                />
+              </button>
 
-            <div className="space-y-1">
-              {category.items.map((item) => (
-                <div
-                  key={item.title}
-                  onClick={() => onInsertMacroBlock?.(item.title, category.name)}
-                  className="group relative p-2 rounded-md bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-indigo-500/30 transition-all cursor-pointer"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="p-1 rounded bg-black/40 border border-white/5 group-hover:border-indigo-500/40">
+              {/* Items in Category (Collapsible) */}
+              {!isCollapsed && (
+                <div className="space-y-0.5 pl-1">
+                  {category.items.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => onInsertMacroBlock?.(item.title, category.name)}
+                      className="w-full flex items-start gap-2.5 p-2 rounded-[10px] hover:bg-secondary border border-transparent hover:border-border text-left transition-colors duration-140 group"
+                    >
+                      <div className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-foreground">
                         {item.icon}
                       </div>
-                      <span className="text-xs font-medium text-zinc-200 group-hover:text-white transition-colors">
-                        {item.title}
-                      </span>
-                    </div>
-                    {item.tag && (
-                      <span className="text-[9px] font-mono text-zinc-500 group-hover:text-zinc-400">
-                        {item.tag}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-1 text-[11px] text-zinc-400 line-clamp-1 group-hover:text-zinc-300">
-                    {item.description}
-                  </p>
-                  <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Plus className="w-3.5 h-3.5 text-indigo-400" />
-                  </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-medium text-foreground truncate">
+                          {item.title}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground line-clamp-1 leading-normal">
+                          {item.description}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </aside>
   );

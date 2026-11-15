@@ -263,7 +263,7 @@ export const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#090a0f] text-slate-100 font-sans overflow-hidden select-none">
+    <div className="flex flex-col h-screen w-screen bg-background text-foreground font-sans overflow-hidden select-none">
       {/* Top Bar */}
       <TopBar
         activeTab={activeTab}
@@ -293,7 +293,7 @@ export const App: React.FC = () => {
         <Sidebar onInsertMacroBlock={handleInsertMacroBlock} />
 
         {/* Center Main Workspace */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#090a0f]">
+        <main className="flex-1 flex flex-col h-full overflow-hidden bg-background">
           {activeTab === 'dashboard' && (
             <DashboardTab
               activeProject={activeProject}

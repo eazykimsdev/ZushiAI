@@ -1,52 +1,52 @@
-import React from 'react';
+import * as React from 'react';
 import { Star, Code } from 'lucide-react';
 
 export const FavoritesTab: React.FC = () => {
   return (
-    <div className="flex-1 overflow-y-auto p-6 max-w-5xl mx-auto space-y-6 select-none">
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+    <div className="flex-1 overflow-y-auto p-8 max-w-4xl mx-auto space-y-6 select-none">
+      <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
-          <h2 className="text-base font-bold text-white flex items-center space-x-2">
-            <Star className="w-5 h-5 text-amber-400" />
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Star className="h-4 w-4 text-primary" />
             <span>Favorites & Saved Macros</span>
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Pin frequently used Luau snippets, macro recipes, and game system boilerplates.
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pin frequently used Luau snippets and game system boilerplates.
           </p>
         </div>
-        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20">
-          SAVED SNIPPETS
+        <span className="text-[11px] font-mono text-muted-foreground">
+          2 snippets
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 rounded-xl glass-panel space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="surface-card p-4 space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center space-x-1.5">
-              <Code className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Safe DataStore Wrapper (Luau)</span>
+            <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Code className="h-3.5 w-3.5 text-primary" />
+              <span>Safe DataStore Manager (Luau)</span>
             </span>
-            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-blue-500/15 text-blue-300 border border-blue-500/20">
-              MODULE
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Module
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400">
-            Standard ProfileService / DataStore2 style boilerplate with retry loops and auto-save.
+          <p className="text-[11px] text-muted-foreground leading-normal">
+            ProfileService-style boilerplate with session locks, retry loops, and BindToClose budget.
           </p>
         </div>
 
-        <div className="p-4 rounded-xl glass-panel space-y-2">
+        <div className="surface-card p-4 space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-white flex items-center space-x-1.5">
-              <Code className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Code className="h-3.5 w-3.5 text-primary" />
               <span>Secure RemoteEvent Rate-Limiter</span>
             </span>
-            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
-              SECURITY
+            <span className="text-[11px] font-mono text-muted-foreground">
+              Security
             </span>
           </div>
-          <p className="text-[11px] text-zinc-400">
-            Authoritative token bucket rate-limiter rejecting flooded client remote calls.
+          <p className="text-[11px] text-muted-foreground leading-normal">
+            Authoritative token bucket rate-limiter rejecting flooded client RemoteEvent calls.
           </p>
         </div>
       </div>
